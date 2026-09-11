@@ -1,23 +1,25 @@
-# Собирает сайт вместе с ClamAV, чтобы CLAMAV_ENABLED=true в .env реально
-# работал на Railway (штатный Node-билдер Railway ClamAV не ставит).
-# Если антивирус не нужен — можно не использовать этот Dockerfile вообще:
-# Railway и так задеплоит проект как обычное Node-приложение (Nixpacks),
-# просто CLAMAV_ENABLED тогда стоит оставить false.
-
 FROM node:18-slim
 
+# Инструменты для сборки better-sqlite3
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    clamav clamav-daemon clamav-freshclam \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /var/run/clamav && chown clamav:clamav /var/run/clamav
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm ci --omit=dev
+
+# npm install вместо npm ci — не требует строгого совпадения lock-файла
+RUN npm install --omit=dev
+
 COPY . .
 
-ENV CLAMAV_ENABLED=true
-ENV CLAMAV_SOCKET=/var/run/clamav/clamd.ctl
+ENV NODE_ENV=production
+ENV CLAMAV_ENABLED=false
+ENV PORT=3000
 
 EXPOSE 3000
-CMD ["./start.sh"]
+
+CMD ["npm", "start"]
