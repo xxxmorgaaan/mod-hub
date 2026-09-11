@@ -115,7 +115,12 @@ async function validateModStructure(filePath) {
   } catch (err) {
     return { blocked: true, issues: [`mod.json повреждён или не является JSON: ${err.message}`], notes: [] };
   }
-  if (!modJson.id || !modJson.name) issues.push('в mod.json нет id и/или name — игра не сможет определить мод');
+  // id в mod.json не обязателен — встречаются рабочие моды вообще без него
+  // (папка архива тогда, видимо, и служит идентификатором). Раньше здесь
+  // была блокирующая проверка, из-за которой отклонялся вполне рабочий мод —
+  // теперь только подсказка модератору, ничего не блокируем.
+  if (!modJson.id) notes.push('в mod.json нет поля id (не обязательно, но обычно есть)');
+  if (!modJson.name) notes.push('в mod.json нет поля name (не обязательно, но обычно есть)');
 
   for (const entry of files) {
     if (!entry.path.startsWith(prefix)) continue; // файл вне папки мода — игнорируем при сравнении структуры

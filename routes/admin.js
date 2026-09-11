@@ -19,9 +19,16 @@ router.get('/admin', (req, res) => res.redirect('/admin.html'));
 
 router.post('/admin/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
-  const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get((username || '').trim());
-  if (!admin || !bcrypt.compareSync(password || '', admin.password_hash)) {
-    return res.status(401).render('admin/login', { title: 'Вход в админку', error: 'Неверный логин или пароль.' });
+  const cleanUsername = (username || '').trim();
+  const cleanPassword = (password || '').trim();
+  const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get(cleanUsername);
+  const ok = admin && bcrypt.compareSync(cleanPassword, admin.password_hash);
+  if (!ok) {
+    console.log(`[admin] Неудачный вход: логин "${cleanUsername}" — ${admin ? 'пароль не совпал' : 'такого логина нет в базе'}.`);
+    return res.status(401).render('admin/login', {
+      title: 'Вход в админку',
+      error: 'Неверный логин или пароль. Если уверены, что всё верно — скорее всего, пароль в OWNER_PASSWORD поменяли уже после первого запуска (см. SYNC_OWNER_PASSWORD в README).',
+    });
   }
   req.session.admin = { id: admin.id, username: admin.username, role: admin.role };
   res.redirect('/admin/moderation');
@@ -172,7 +179,7 @@ router.get('/admin/admins', requireOwner, (req, res) => {
 });
 router.post('/admin/admins', requireOwner, (req, res) => {
   const username = (req.body.username || '').trim();
-  const password = req.body.password || '';
+  const password = (req.body.password || '').trim();
   if (username && password.length >= 6) {
     db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, \'moderator\')')
       .run(username, bcrypt.hashSync(password, 10));
@@ -180,7 +187,7 @@ router.post('/admin/admins', requireOwner, (req, res) => {
   res.redirect('/admin/admins');
 });
 router.post('/admin/admins/:id/reset-password', requireOwner, (req, res) => {
-  const password = req.body.password || '';
+  const password = (req.body.password || '').trim();
   if (password.length >= 6) {
     db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), req.params.id);
   }
@@ -197,15 +204,16 @@ router.get('/admin/settings', (req, res) => {
   res.render('admin/settings', { title: 'Настройки', saved: !!req.query.saved, error: null });
 });
 router.post('/admin/settings/password', (req, res) => {
-  const { current_password, new_password } = req.body;
+  const currentPassword = (req.body.current_password || '').trim();
+  const newPassword = (req.body.new_password || '').trim();
   const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.session.admin.id);
-  if (!bcrypt.compareSync(current_password || '', admin.password_hash)) {
+  if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
     return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Текущий пароль неверный.' });
   }
-  if (!new_password || new_password.length < 6) {
+  if (!newPassword || newPassword.length < 6) {
     return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Новый пароль — минимум 6 символов.' });
   }
-  db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(new_password, 10), admin.id);
+  db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), admin.id);
   res.redirect('/admin/settings?saved=1');
 });
 

@@ -34,7 +34,7 @@ function seed() {
   }
 
   const login = (process.env.OWNER_LOGIN || 'owner').trim();
-  const pass = process.env.OWNER_PASSWORD || 'change-me-now';
+  const pass = (process.env.OWNER_PASSWORD || 'change-me-now').trim();
   const owner = db.prepare(`SELECT * FROM admins WHERE role = 'owner' LIMIT 1`).get();
 
   if (!owner) {

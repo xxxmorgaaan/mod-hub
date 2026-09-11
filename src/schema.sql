@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS mod_tags (
   tag    TEXT NOT NULL,
   PRIMARY KEY (mod_id, tag)
 );
+CREATE INDEX IF NOT EXISTS idx_mod_tags_tag ON mod_tags(tag);
 
 CREATE TABLE IF NOT EXISTS mod_screenshots (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,

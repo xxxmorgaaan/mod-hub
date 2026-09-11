@@ -5,6 +5,8 @@ const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
+const compression = require('compression');
+const { startAutoApproveSweep } = require('./src/auto-approve');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +19,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(helmet({
   contentSecurityPolicy: false, // включите и настройте под свой домен перед продакшеном
 }));
+app.use(compression()); // gzip на HTML/CSS/JS/JSON-ответы — заметно ускоряет каталог на телефоне
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -27,8 +30,12 @@ app.use(session({
   cookie: { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 12 },
 }));
 
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
+  maxAge: '30d', // обложки/скриншоты/архивы не перезаписываются на месте — новый файл всегда новое имя
+}));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1h', // css/js/картинки конструктора правятся редко, но имя файла не версионируется — час за глаза
+}));
 
 // ---------------------------------------------------------------- locals для всех шаблонов
 app.use((req, res, next) => {
@@ -61,6 +68,8 @@ app.get('/healthz', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Кузница модов запущен: http://localhost:${PORT}`);
+
+  startAutoApproveSweep();
 
   const publicUrl = process.env.PUBLIC_URL;
   if (publicUrl) {

@@ -56,11 +56,11 @@ router.get('/games/:slug', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const perPage = 12;
 
-  let sql = `SELECT DISTINCT m.* FROM mods m LEFT JOIN mod_tags t ON t.mod_id = m.id
+  let baseSql = `SELECT DISTINCT m.* FROM mods m LEFT JOIN mod_tags t ON t.mod_id = m.id
              WHERE m.game_id = ? AND m.status = 'approved'`;
   const params = [game.id];
-  if (q) { sql += ' AND (m.name LIKE ? OR m.summary LIKE ?)'; params.push(`%${q}%`, `%${q}%`); }
-  if (tag) { sql += ' AND t.tag = ?'; params.push(tag); }
+  if (q) { baseSql += ' AND (m.name LIKE ? OR m.summary LIKE ?)'; params.push(`%${q}%`, `%${q}%`); }
+  if (tag) { baseSql += ' AND t.tag = ?'; params.push(tag); }
 
   const orderMap = {
     new: 'm.created_at DESC',
@@ -69,11 +69,13 @@ router.get('/games/:slug', (req, res) => {
     likes: 'm.likes DESC',
     az: 'm.name COLLATE NOCASE ASC',
   };
-  sql += ` ORDER BY ${orderMap[sort] || orderMap.new}`;
 
-  const all = db.prepare(sql).all(...params);
-  const total = all.length;
-  const pageItems = all.slice((page - 1) * perPage, page * perPage).map(attachSummary);
+  // COUNT(*) по тому же WHERE — быстрее, чем один раз вытащить все строки
+  // ради total и вручную резать их в JS, особенно когда модов станет много.
+  const total = db.prepare(`SELECT COUNT(*) c FROM (${baseSql})`).get(...params).c;
+
+  const pageSql = `${baseSql} ORDER BY ${orderMap[sort] || orderMap.new} LIMIT ? OFFSET ?`;
+  const pageItems = db.prepare(pageSql).all(...params, perPage, (page - 1) * perPage).map(attachSummary);
 
   const popularTags = db.prepare(
     `SELECT t.tag, COUNT(*) c FROM mod_tags t JOIN mods m ON m.id = t.mod_id
