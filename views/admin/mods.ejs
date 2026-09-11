@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><%- include('../partials/head', { title }) %></head>
+<body>
+<%- include('../partials/header') %>
+
+<main class="container section">
+  <h1>Все моды</h1>
+  <%- include('_tabs', { active: 'mods' }) %>
+
+  <div style="margin-bottom:14px;"><a class="btn btn-ghost btn-sm" href="/admin/mods/export.csv">⬇ Экспорт в CSV</a></div>
+
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Название</th><th>Статус</th><th>Скачиваний</th><th>Лайков</th><th>Создан</th><th>Действия</th></tr></thead>
+      <tbody>
+        <% mods.forEach(m => { %>
+        <tr>
+          <td><a href="/mods/<%= m.id %>" target="_blank"><%= m.name %></a></td>
+          <td><span class="badge badge-<%= m.status %>"><%= m.status %></span></td>
+          <td><%= m.downloads %></td>
+          <td><%= m.likes %></td>
+          <td><%= m.created_at %></td>
+          <td class="row-actions">
+            <form method="post" action="/admin/mods/<%= m.id %>/visibility"><button class="btn btn-ghost btn-sm" type="submit"><%= m.status === 'hidden' ? 'Вернуть в витрину' : 'Скрыть' %></button></form>
+            <form method="post" action="/admin/mods/<%= m.id %>/delete" onsubmit="return confirm('Удалить мод навсегда?');"><button class="btn btn-danger btn-sm" type="submit">Удалить</button></form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<%- include('../partials/footer') %>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><%- include('partials/head', { title }) %></head>
+<body>
+<%- include('partials/header') %>
+
+<main class="container section">
+  <% if (mod.status !== 'approved') { %>
+    <div class="alert alert-warn">
+      Этот мод виден только вам по коду управления — статус: <b><%= mod.status %></b><% if (mod.moderation_note) { %>, комментарий модератора: «<%= mod.moderation_note %>»<% } %>.
+    </div>
+  <% } %>
+
+  <div class="mod-hero">
+    <div class="cover-col">
+      <div class="cover-big" style="<%= mod.cover_path ? `background-image:url('${mod.cover_path}')` : '' %>"></div>
+      <% if (screenshots.length) { %>
+      <div class="gallery">
+        <% screenshots.forEach(s => { %><img src="<%= s.path %>" data-full="<%= s.path %>" alt="Скриншот"><% }) %>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="info-col">
+      <h1><%= mod.name %></h1>
+      <% if (mod.tags.length) { %>
+      <div class="tag-row" style="margin-bottom:12px;">
+        <% tags.forEach(t => { %><a class="tag-chip" href="/games/<%= game.slug %>?tag=<%= encodeURIComponent(t) %>"><%= t %></a><% }) %>
+      </div>
+      <% } %>
+      <p><%= mod.summary %></p>
+
+      <div class="stat-row">
+        <button type="button" class="btn btn-ghost like-btn <%= liked ? 'is-liked' : '' %>" data-like-url="/mods/<%= mod.id %>/like">
+          ♥ <span class="like-count"><%= mod.likes %></span>
+        </button>
+        <span class="btn btn-ghost btn-sm" style="cursor:default;">⬇ <%= mod.downloads %> скачиваний</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="navigator.share ? navigator.share({title:'<%= mod.name %>', url: location.href}) : (navigator.clipboard.writeText(location.href), alert('Ссылка скопирована'))">Поделиться</button>
+        <a class="btn btn-ghost btn-sm" href="/report/mod/<%= mod.id %>">⚠ Пожаловаться</a>
+      </div>
+
+      <% if (versions.length) { %>
+        <a class="btn btn-primary btn-block" href="/mods/<%= mod.id %>/download/<%= versions[0].id %><%= code ? '?code='+encodeURIComponent(code) : '' %>">
+          Скачать <%= versions[0].version_label %> · <%= (versions[0].file_size/1024/1024).toFixed(1) %> МБ
+        </a>
+      <% } else { %>
+        <div class="alert alert-warn">Одобренных файлов пока нет.</div>
+      <% } %>
+
+      <% if (mod.description) { %>
+        <h2 style="margin-top:24px;">Описание</h2>
+        <p style="white-space:pre-wrap;color:var(--text-dim);"><%= mod.description %></p>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (versions.length) { %>
+  <section style="margin-top:32px;">
+    <h2>История версий</h2>
+    <% versions.forEach(v => { %>
+      <div class="version-item">
+        <div class="vh">
+          <b><%= v.version_label %></b>
+          <span class="badge badge-<%= v.status %>"><%= v.status %></span>
+          <a class="btn btn-ghost btn-sm" href="/mods/<%= mod.id %>/download/<%= v.id %><%= code ? '?code='+encodeURIComponent(code) : '' %>">Скачать</a>
+        </div>
+        <% if (v.changelog) { %><div class="changelog"><%= v.changelog %></div><% } %>
+      </div>
+    <% }) %>
+  </section>
+  <% } %>
+
+  <% if (similar.length) { %>
+  <section style="margin-top:32px;">
+    <h2>Похожие моды</h2>
+    <div class="mod-grid">
+      <% similar.forEach(m => { %><%- include('partials/mod-card', { mod: { ...m, tags: [] } }) %><% }) %>
+    </div>
+  </section>
+  <% } %>
+
+  <section style="margin-top:32px;">
+    <h2>Комментарии (<%= comments.length %>)</h2>
+    <form method="post" action="/mods/<%= mod.id %>/comments" class="form-panel" style="margin-bottom:16px;">
+      <div class="field"><label>Имя</label><input type="text" name="author_name" maxlength="40" placeholder="Гость"></div>
+      <div class="field"><label>Комментарий</label><textarea name="body" maxlength="2000" required></textarea></div>
+      <button class="btn btn-primary" type="submit">Отправить</button>
+    </form>
+    <% comments.forEach(c => { %>
+      <div class="comment">
+        <span class="author"><%= c.author_name %></span> · <span class="when"><%= c.created_at %></span>
+        <p><%= c.body %></p>
+      </div>
+    <% }) %>
+  </section>
+</main>
+
+<%- include('partials/footer') %>
+</body>
+</html>

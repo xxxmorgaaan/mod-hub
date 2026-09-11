@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><%- include('partials/head', { title }) %></head>
+<body>
+<%- include('partials/header') %>
+
+<main class="container section" style="max-width:640px;">
+  <h1>✅ <%= typeof isBundle !== 'undefined' && isBundle ? 'Сборка' : 'Мод' %> отправлен(а) на модерацию</h1>
+  <p>«<b><%= mod.name %></b>» появится в общем каталоге, как только администратор проверит и одобрит публикацию. Обычно это происходит быстро.</p>
+
+  <h2 style="margin-top:24px;">Ваш код управления</h2>
+  <p class="hint">Он нужен для редактирования, публикации новых версий и удаления. Мы сохранили его в этом браузере автоматически — но на всякий случай <b>скопируйте и сохраните его отдельно</b>: без него восстановить доступ нельзя.</p>
+  <div class="control-code-box" data-remember-code="<%= code %>" data-remember-name="<%= mod.name %>"><%= code %></div>
+
+  <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+    <a class="btn btn-primary" href="/<%= typeof isBundle !== 'undefined' && isBundle ? 'bundles' : 'mods' %>/<%= mod.slug || mod.id %>/edit?code=<%= encodeURIComponent(code) %>">Управлять сейчас</a>
+    <a class="btn btn-ghost" href="/">На главную</a>
+  </div>
+</main>
+
+<%- include('partials/footer') %>
+</body>
+</html>
