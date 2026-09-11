@@ -461,6 +461,7 @@ code{
 .texture-meta{ display:flex; flex-direction:column; gap: 6px; min-width: 0; flex: 1; }
 .texture-filename{ font-size: 12px; color: var(--text-faint); word-break: break-all; }
 .texture-path-label{ font-size: 11.5px; color: var(--text-dim); display:flex; flex-direction:column; gap:4px; }
+.texture-actions{ display:flex; gap:6px; flex-wrap:wrap; }
 .texture-path{
   background: var(--panel-2); border: 1px solid var(--border-2); color: var(--text);
   font-family: var(--font-mono); font-size: 11.5px; padding: 5px 7px; border-radius: 3px;
@@ -527,20 +528,67 @@ code{
 
 /* ---------------------------------------------------------------- RESPONSIVE */
 
+.rail-project-toggle{ display: none; }
+
 @media (max-width: 860px){
   .app{ grid-template-columns: 1fr; }
+
   .rail{
-    position: relative;
+    position: sticky; top: 0; z-index: 30;
     height: auto;
-    flex-direction: row;
-    align-items: center;
-    overflow-x: auto;
-    padding: 12px;
+    display: flex; flex-direction: column;
+    padding: 10px 12px 0;
+    background: var(--rail);
   }
-  .rail-brand{ border-bottom: none; border-right: 1px solid var(--border); padding: 0 14px 0 4px; margin: 0 10px 0 0; }
-  .rail-nav{ flex-direction: row; }
-  .rail-tab{ border-left: none; border-bottom: 2px solid transparent; white-space: nowrap; border-radius: 3px 3px 0 0; }
+  .rail-top{ display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 10px; }
+  .rail-brand{ border-bottom: none; padding: 0; margin: 0; }
+
+  .rail-project-toggle{
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--panel-2); border: 1px solid var(--border-2); color: var(--text);
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    padding: 8px 12px; border-radius: 3px; cursor: pointer; flex-shrink: 0;
+    min-height: 36px;
+  }
+  .rail-project-toggle.is-active{ border-color: var(--accent); color: var(--accent); }
+
+  .rail-nav{
+    flex-direction: row; flex-wrap: nowrap; gap: 2px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 10px;
+    margin: 0 -12px; padding-left: 12px; padding-right: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .rail-tab{
+    border-left: none; border-bottom: 2px solid transparent;
+    white-space: nowrap; border-radius: 3px 3px 0 0; flex: 0 0 auto;
+  }
   .rail-tab.is-active{ border-left-color: transparent; border-bottom-color: var(--accent); }
-  .rail-foot{ display:none; }
-  .stage{ padding: 24px 18px 60px; }
+
+  /* «Проект» (сохранить/загрузить/импорт/новый мод/ссылки) — было незаметно
+     спрятано display:none, теперь открывается по кнопке «⚙ Проект» сверху,
+     не теряется на телефоне. */
+  .rail-foot{
+    display: none;
+    flex-direction: column; gap: 8px;
+    padding: 12px 0 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .rail-foot.is-open{ display: flex; }
+
+  .stage{ padding: 16px 14px 60px; }
+
+  .field-grid{ grid-template-columns: 1fr; }
+  .namelist-grid{ grid-template-columns: 1fr; }
+  .texture-grid{ grid-template-columns: 1fr 1fr; }
+  .card-row{ flex-wrap: wrap; gap: 8px; }
+  .card-actions{ flex-wrap: wrap; }
+  .tex-pick-row select, .tex-pick-row input[type="text"]{ min-width: 0; flex: 1 1 100%; }
+  .unlocks-add-row select, .unlocks-add-row input{ flex: 1 1 100%; }
+  .material-add-row{ flex-direction: column; align-items: stretch; }
+  .export-actions{ flex-direction: column; }
+  .export-actions .btn{ width: 100%; }
 }
+

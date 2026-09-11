@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS mod_versions (
   file_path    TEXT NOT NULL,
   file_size    INTEGER NOT NULL DEFAULT 0,
   status       TEXT NOT NULL DEFAULT 'pending', -- новая версия тоже ждёт проверки
+  scan_note    TEXT, -- результат автопроверки файла (эвристика + ClamAV, если подключён) — см. src/scan.js
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

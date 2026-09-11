@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const db = require('../src/db');
 const { slugify, issueControlCode, verifyControlCode, recordIdFromCode, getVoterToken } = require('../src/helpers');
 const { uploadModFiles } = require('../src/upload');
+const { scanUpload, safeUnlink } = require('../src/scan');
 
 const router = express.Router();
 
@@ -85,6 +86,14 @@ router.get('/games/:slug', (req, res) => {
   });
 });
 
+// ---------------------------------------------------------------- публикация
+// ВАЖНО: этот роут должен стоять РАНЬШЕ '/mods/:slug' ниже — иначе Express
+// принимает "new" за slug мода, ищет несуществующий мод и отдаёт 404.
+router.get('/mods/new', (req, res) => {
+  const game = getGameBySlug('alem-colony');
+  res.render('mod-form', { title: 'Опубликовать мод', game, mode: 'create', mod: null, tags: [] });
+});
+
 // ---------------------------------------------------------------- страница мода
 router.get('/mods/:slug', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE slug = ?').get(req.params.slug);
@@ -113,15 +122,9 @@ router.get('/mods/:slug', (req, res) => {
   res.render('mod-detail', { title: mod.name, mod, game, versions, screenshots, tags, comments, similar, liked, authorized, code: req.query.code || '' });
 });
 
-// ---------------------------------------------------------------- публикация
-router.get('/mods/new', (req, res) => {
-  const game = getGameBySlug('alem-colony');
-  res.render('mod-form', { title: 'Опубликовать мод', game, mode: 'create', mod: null, tags: [] });
-});
-
 router.post('/mods', createLimiter, uploadModFiles.fields([
   { name: 'cover', maxCount: 1 }, { name: 'screenshots', maxCount: 8 }, { name: 'archive', maxCount: 1 },
-]), (req, res) => {
+]), async (req, res) => {
   const game = getGameBySlug('alem-colony');
   const name = (req.body.name || '').trim();
   const summary = (req.body.summary || '').trim();
@@ -130,18 +133,35 @@ router.post('/mods', createLimiter, uploadModFiles.fields([
   const changelog = (req.body.changelog || 'Первая публикация.').trim();
   const tags = (req.body.tags || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 10);
   const archive = req.files.archive && req.files.archive[0];
+  const cover = req.files.cover && req.files.cover[0];
+  const screenshots = req.files.screenshots || [];
+
+  const cleanupUploaded = () => {
+    if (archive) safeUnlink(archive.path);
+    if (cover) safeUnlink(cover.path);
+    screenshots.forEach(f => safeUnlink(f.path));
+  };
 
   if (!name || !archive) {
+    cleanupUploaded();
     return res.status(400).render('mod-form', {
       title: 'Опубликовать мод', game, mode: 'create', mod: req.body, tags,
       error: 'Нужно хотя бы название и файл архива мода (.zip).',
     });
   }
 
+  const scan = await scanUpload(archive.path);
+  if (scan.blocked) {
+    cleanupUploaded();
+    return res.status(400).render('mod-form', {
+      title: 'Опубликовать мод', game, mode: 'create', mod: req.body, tags,
+      error: `Файл не прошёл проверку и был удалён: ${scan.note}`,
+    });
+  }
+
   const id = slugify(name);
   const slug = id;
   const { code, hash } = issueControlCode(id);
-  const cover = req.files.cover && req.files.cover[0];
 
   db.prepare(`INSERT INTO mods (id, game_id, slug, name, summary, description, cover_path, control_code_hash, status)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`)
@@ -150,13 +170,12 @@ router.post('/mods', createLimiter, uploadModFiles.fields([
   const insTag = db.prepare('INSERT OR IGNORE INTO mod_tags (mod_id, tag) VALUES (?, ?)');
   tags.forEach(t => insTag.run(id, t));
 
-  const screenshots = req.files.screenshots || [];
   const insShot = db.prepare('INSERT INTO mod_screenshots (mod_id, path, position) VALUES (?, ?, ?)');
   screenshots.forEach((f, i) => insShot.run(id, `/uploads/screenshots/${f.filename}`, i));
 
-  db.prepare(`INSERT INTO mod_versions (mod_id, version_label, changelog, file_path, file_size, status)
-              VALUES (?, ?, ?, ?, ?, 'pending')`)
-    .run(id, versionLabel, changelog, `/uploads/archives/${archive.filename}`, archive.size);
+  db.prepare(`INSERT INTO mod_versions (mod_id, version_label, changelog, file_path, file_size, status, scan_note)
+              VALUES (?, ?, ?, ?, ?, 'pending', ?)`)
+    .run(id, versionLabel, changelog, `/uploads/archives/${archive.filename}`, archive.size, scan.note);
 
   res.render('mod-published', { title: 'Мод отправлен на модерацию', mod: { id, name, slug }, code });
 });
@@ -230,7 +249,7 @@ router.post('/mods/:id', uploadModFiles.fields([{ name: 'cover', maxCount: 1 }, 
   res.redirect(`/mods/${mod.id}/edit?code=${encodeURIComponent(code)}&saved=1`);
 });
 
-router.post('/mods/:id/versions', uploadModFiles.fields([{ name: 'archive', maxCount: 1 }]), (req, res) => {
+router.post('/mods/:id/versions', uploadModFiles.fields([{ name: 'archive', maxCount: 1 }]), async (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
@@ -238,11 +257,22 @@ router.post('/mods/:id/versions', uploadModFiles.fields([{ name: 'archive', maxC
   const archive = req.files.archive && req.files.archive[0];
   if (!archive) return res.redirect(`/mods/${mod.id}/edit?code=${encodeURIComponent(code)}`);
 
+  const scan = await scanUpload(archive.path);
+  if (scan.blocked) {
+    safeUnlink(archive.path);
+    return res.status(400).render('mod-form', {
+      title: `Редактировать: ${mod.name}`, game: db.prepare('SELECT * FROM games WHERE id=?').get(mod.game_id),
+      mode: 'edit', mod, tags: tagsFor(mod.id).join(', '), code,
+      versions: versionsFor(mod.id, { onlyApproved: false }), screenshots: screenshotsFor(mod.id),
+      error: `Файл не прошёл проверку и был удалён: ${scan.note}`,
+    });
+  }
+
   const versionLabel = (req.body.version || '').trim() || `v${Date.now()}`;
   const changelog = (req.body.changelog || '').trim();
-  db.prepare(`INSERT INTO mod_versions (mod_id, version_label, changelog, file_path, file_size, status)
-              VALUES (?, ?, ?, ?, ?, 'pending')`)
-    .run(mod.id, versionLabel, changelog, `/uploads/archives/${archive.filename}`, archive.size);
+  db.prepare(`INSERT INTO mod_versions (mod_id, version_label, changelog, file_path, file_size, status, scan_note)
+              VALUES (?, ?, ?, ?, ?, 'pending', ?)`)
+    .run(mod.id, versionLabel, changelog, `/uploads/archives/${archive.filename}`, archive.size, scan.note);
 
   // Новая версия тоже должна пройти проверку, даже если сам мод уже одобрен.
   res.redirect(`/mods/${mod.id}/edit?code=${encodeURIComponent(code)}&versionSent=1`);

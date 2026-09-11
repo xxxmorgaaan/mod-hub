@@ -322,8 +322,19 @@ function buildResourcePicker(controlId, name) {
       select.appendChild(og);
     }
     select.appendChild(el('option', { value: '__new' }, '+ Новый ресурс…'));
+    // Значение может быть не из пресетов и ещё не заведено на вкладке
+    // «Ресурсы» — например, у мода, импортированного из чужого .zip. Раньше
+    // такое значение молча терялось (select откатывался на «не указано»,
+    // а при сохранении формы это стирало исходные данные). Теперь для
+    // такого случая добавляем свою временную опцию, чтобы ничего не терялось.
+    if (current && current !== '__new' && !Array.from(select.options).some(o => o.value === current)) {
+      const custom = el('optgroup', { label: 'Текущее значение (не из списка)' });
+      custom.appendChild(el('option', { value: current }, current));
+      select.insertBefore(custom, select.querySelector('option[value="__new"]'));
+    }
     if (Array.from(select.options).some(o => o.value === current)) select.value = current;
   }
+  select.__setValue = (v) => refresh(v || '');
 
   select.addEventListener('focus', () => refresh());
   select.addEventListener('change', () => {
@@ -475,6 +486,13 @@ function readFieldFromForm(field, formEl) {
       if (raw === '') return undefined;
       return field.numeric ? Number(raw) : raw;
     }
+    case 'resource': {
+      // '__new' — значит выбрали «+ Новый ресурс…», но не подтвердили имя
+      // (Enter/уход из поля) до отправки формы. Раньше это сохранялось
+      // буквальной строкой "__new" прямо в JSON мода — считаем это пустым.
+      if (raw === '' || raw === '__new') return undefined;
+      return raw;
+    }
     case 'json':
     case 'materialList': {
       if (raw === '') return undefined;
@@ -496,6 +514,7 @@ function writeFieldToForm(field, formEl, value) {
   if (field.type === 'checkbox') { input.checked = !!value; return; }
   if (field.type === 'unlocks') { input.__setKeys ? input.__setKeys(value) : (input.value = Array.isArray(value) ? value.join(', ') : ''); return; }
   if (field.type === 'materialList') { input.__setItems ? input.__setItems(value) : (input.value = value ? JSON.stringify(value) : ''); return; }
+  if (field.type === 'resource') { input.__setValue ? input.__setValue(value) : (input.value = value || ''); return; }
   if (value === undefined || value === null) { input.value = ''; return; }
   if (field.type === 'json') { input.value = JSON.stringify(value, null, 1); return; }
   if (field.type === 'list') { input.value = Array.isArray(value) ? value.join(', ') : String(value); return; }
@@ -667,6 +686,7 @@ function initSchemaSection(schemaKey) {
       if (!inp) return;
       if (f.type === 'unlocks' && inp.__setKeys) inp.__setKeys([]);
       if (f.type === 'materialList' && inp.__setItems) inp.__setItems([]);
+      if (f.type === 'resource' && inp.__setValue) inp.__setValue(''); // убирает временную опцию «Текущее значение»
     });
   }
 
@@ -1044,6 +1064,25 @@ function initTextures() {
         tex.path = pathInput.value.trim();
         saveState();
       });
+
+      // Заменить сам файл (не только путь) — например, у мода, загруженного
+      // .zip-импортом, где картинка уже не устраивает, но путь верный.
+      const replaceInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', hidden: true });
+      replaceInput.addEventListener('change', () => {
+        const file = replaceInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          tex.dataUrl = reader.result;
+          tex.fileName = file.name;
+          tex.size = file.size;
+          saveState();
+          renderTextures();
+        };
+        reader.readAsDataURL(file);
+      });
+      const replaceBtn = el('label', { class: 'btn btn-ghost btn-sm file-btn' }, ['Заменить файл', replaceInput]);
+
       const delBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-danger-text' }, 'Удалить');
       delBtn.addEventListener('click', () => {
         state.textures.splice(idx, 1);
@@ -1056,7 +1095,7 @@ function initTextures() {
           'Путь: textures/',
           pathInput,
         ]),
-        delBtn,
+        el('div', { class: 'texture-actions' }, [replaceBtn, delBtn]),
       ]);
       wrap.appendChild(el('div', { class: 'texture-card' }, [img, meta]));
     });
@@ -1169,6 +1208,17 @@ function validateProject() {
   // Рецепт без результата — станок не будет знать, что выдавать.
   state.tables.recipes.forEach(r => {
     if (!r.outType) warnings.push(`Рецепт «${r.name || r.id}» без поля «Результат: тип» — станок не поймёт, что производить.`);
+  });
+
+  // Защита от старого бага: значение "__new" могло сохраниться в поле-материале,
+  // если выбрали «+ Новый ресурс…» и отправили форму, не подтвердив имя. Если
+  // такое найдётся в данных, сохранённых ещё до исправления — подсветим явно.
+  TABLE_KEYS.forEach(k => {
+    state.tables[k].forEach(item => {
+      Object.entries(item).forEach(([fieldName, v]) => {
+        if (v === '__new') warnings.push(`«${SCHEMAS[k].itemLabel(item)}»: поле «${fieldName}» содержит служебное значение "__new" вместо материала — откройте запись, перевыберите материал и сохраните заново.`);
+      });
+    });
   });
 
   // Черновые переводы, которые ещё не поправили руками.
@@ -1458,7 +1508,27 @@ function init() {
   initTextures();
   initExportTab();
   initProjectControls();
+  initMobileProjectToggle();
   refreshCounts();
+}
+
+/** Кнопка «⚙ Проект» на телефоне — открывает/закрывает блок с сохранением,
+ *  загрузкой проекта/мода и ссылками (на десктопе он всегда виден снизу слева). */
+function initMobileProjectToggle() {
+  const btn = qs('#railProjectToggle');
+  const foot = qs('.rail-foot');
+  if (!btn || !foot) return;
+  btn.addEventListener('click', () => {
+    const open = foot.classList.toggle('is-open');
+    btn.classList.toggle('is-active', open);
+    btn.textContent = open ? '✕ Проект' : '⚙ Проект';
+  });
+  // Выбрали пункт вкладки — закрываем панель проекта, если она была открыта.
+  qsa('.rail-tab').forEach(t => t.addEventListener('click', () => {
+    foot.classList.remove('is-open');
+    btn.classList.remove('is-active');
+    btn.textContent = '⚙ Проект';
+  }));
 }
 
 document.addEventListener('DOMContentLoaded', init);

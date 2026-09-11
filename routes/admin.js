@@ -35,7 +35,11 @@ router.use('/admin', requireAdmin);
 
 // ---------------------------------------------------------------- модерация (главная вкладка)
 router.get('/admin/moderation', (req, res) => {
-  const pendingMods = db.prepare(`SELECT * FROM mods WHERE status = 'pending' ORDER BY created_at`).all();
+  const pendingMods = db.prepare(`SELECT * FROM mods WHERE status = 'pending' ORDER BY created_at`).all()
+    .map(m => {
+      const firstVersion = db.prepare('SELECT scan_note FROM mod_versions WHERE mod_id = ? ORDER BY id LIMIT 1').get(m.id);
+      return { ...m, scan_note: firstVersion ? firstVersion.scan_note : null };
+    });
   const pendingVersions = db.prepare(
     `SELECT v.*, m.name mod_name, m.id mod_id FROM mod_versions v JOIN mods m ON m.id = v.mod_id
      WHERE v.status = 'pending' AND m.status = 'approved' ORDER BY v.created_at`

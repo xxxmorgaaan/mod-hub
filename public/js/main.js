@@ -14,21 +14,6 @@
     }));
   }
 
-  // ---------------------------------------------------------------- переключатель Игрок/Разработчик (чисто визуальный)
-  const modeSwitch = document.getElementById('modeSwitch');
-  if (modeSwitch) {
-    const saved = localStorage.getItem('mb_mode') || 'player';
-    document.body.dataset.mode = saved;
-    modeSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b.dataset.mode === saved));
-    modeSwitch.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-mode]');
-      if (!btn) return;
-      localStorage.setItem('mb_mode', btn.dataset.mode);
-      document.body.dataset.mode = btn.dataset.mode;
-      modeSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('is-active', b === btn));
-    });
-  }
-
   // ---------------------------------------------------------------- скрытый вход в админку: 5 кликов по подвалу
   const footerTrigger = document.getElementById('footerAdminTrigger');
   if (footerTrigger) {
