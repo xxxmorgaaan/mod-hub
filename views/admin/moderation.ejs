@@ -13,8 +13,8 @@
   <% pendingMods.forEach(m => { %>
     <div class="mod-review-card">
       <div class="vh" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;">
-        <div><b><%= m.name %></b> — <a href="/mods/<%= m.id %>" target="_blank">открыть превью</a><br><span class="hint"><%= m.summary %></span>
-          <% if (m.scan_note) { %><br><span class="hint">🛡 <%= m.scan_note %></span><% } %></div>
+        <div><b><%= m.name %></b> — <a href="/mods/<%= m.id %>" target="_blank">открыть превью</a> · <a href="/admin/mods/<%= m.id %>/inspect">🔍 Посмотреть файлы</a><br><span class="hint"><%= m.summary %></span>
+          <% if (m.scan_note) { %><br><span class="badge badge-approved">✓ автопроверка пройдена</span><% } %></div>
         <div class="row-actions">
           <form method="post" action="/admin/mods/<%= m.id %>/approve"><button class="btn btn-primary btn-sm" type="submit">Одобрить</button></form>
           <form method="post" action="/admin/mods/<%= m.id %>/reject" onsubmit="return promptNote(this)"><input type="hidden" name="note" class="note-input"><button class="btn btn-danger btn-sm" type="submit">Отклонить</button></form>
@@ -28,9 +28,9 @@
   <% pendingVersions.forEach(v => { %>
     <div class="mod-review-card">
       <div class="vh" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;">
-        <div><b><%= v.mod_name %></b> → версия <b><%= v.version_label %></b> (<%= humanSize(v.file_size) %>)<br>
+        <div><b><%= v.mod_name %></b> → версия <b><%= v.version_label %></b> (<%= humanSize(v.file_size) %>) · <a href="/admin/mods/<%= v.mod_id %>/inspect?version=<%= v.id %>">🔍 Посмотреть файлы</a><br>
           <span class="hint"><%= v.changelog %></span>
-          <% if (v.scan_note) { %><br><span class="hint">🛡 <%= v.scan_note %></span><% } %></div>
+          <% if (v.scan_note) { %><br><span class="badge badge-approved">✓ автопроверка пройдена</span><% } %></div>
         <div class="row-actions">
           <form method="post" action="/admin/mod-versions/<%= v.id %>/approve"><button class="btn btn-primary btn-sm" type="submit">Одобрить</button></form>
           <form method="post" action="/admin/mod-versions/<%= v.id %>/reject"><button class="btn btn-danger btn-sm" type="submit">Отклонить</button></form>

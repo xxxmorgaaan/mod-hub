@@ -22,6 +22,7 @@
           <td><%= m.likes %></td>
           <td><%= m.created_at %></td>
           <td class="row-actions">
+            <a class="btn btn-ghost btn-sm" href="/admin/mods/<%= m.id %>/inspect">🔍 Файлы</a>
             <form method="post" action="/admin/mods/<%= m.id %>/visibility"><button class="btn btn-ghost btn-sm" type="submit"><%= m.status === 'hidden' ? 'Вернуть в витрину' : 'Скрыть' %></button></form>
             <form method="post" action="/admin/mods/<%= m.id %>/delete" onsubmit="return confirm('Удалить мод навсегда?');"><button class="btn btn-danger btn-sm" type="submit">Удалить</button></form>
           </td>

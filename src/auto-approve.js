@@ -45,7 +45,7 @@ function sweepOnce(minutes) {
 }
 
 function startAutoApproveSweep() {
-  const minutes = process.env.AUTO_APPROVE_MINUTES !== undefined ? Number(process.env.AUTO_APPROVE_MINUTES) : 10;
+  const minutes = process.env.AUTO_APPROVE_MINUTES !== undefined ? Number(process.env.AUTO_APPROVE_MINUTES) : 5;
   if (!minutes || minutes <= 0) {
     console.log('[auto-approve] Отключено (AUTO_APPROVE_MINUTES=0) — только ручная модерация.');
     return;

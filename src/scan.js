@@ -216,14 +216,32 @@ async function scanUpload(filePath) {
     return { blocked: true, note: `ClamAV нашёл угрозу: ${av.viruses.join(', ') || 'неизвестная сигнатура'}` };
   }
 
-  const parts = ['Проверка архива: ок.'];
-  parts.push(av.available ? 'ClamAV: чисто.' : 'ClamAV не настроен — вирусы не проверялись автоматически.');
-  parts.push(structure.notes.length ? `Структура: ${structure.notes.join('; ')}.` : 'Структура похожа на обычный мод.');
-  return { blocked: false, note: parts.join(' ') };
+  // Модератору тут нужен простой сигнал «прошло / есть на что посмотреть»,
+  // а не разбор механики проверки — сами файлы смотрятся кнопкой
+  // «Посмотреть файлы» в очереди модерации, этого достаточно.
+  const note = structure.notes.length ? `Автопроверка пройдена, есть ${structure.notes.length} замечание(й).` : 'Автопроверка пройдена.';
+  return { blocked: false, note };
+}
+
+/** Список файлов в архиве — для ручного просмотра модератором (без распаковки). */
+async function listZipEntries(filePath) {
+  const directory = await unzipper.Open.file(filePath);
+  return directory.files
+    .filter(f => f.type === 'File')
+    .map(f => ({ path: f.path, size: f.uncompressedSize || 0 }))
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
+/** Достаёт содержимое одного файла из архива по точному пути (для просмотра). */
+async function readZipEntry(filePath, entryPath) {
+  const directory = await unzipper.Open.file(filePath);
+  const entry = directory.files.find(f => f.type === 'File' && f.path === entryPath);
+  if (!entry) return null;
+  return entry.buffer();
 }
 
 function safeUnlink(filePath) {
   fs.unlink(filePath, () => { /* файла могло не быть — не критично */ });
 }
 
-module.exports = { scanUpload, heuristicScanZip, validateModStructure, clamavScan, safeUnlink };
+module.exports = { scanUpload, heuristicScanZip, validateModStructure, clamavScan, safeUnlink, listZipEntries, readZipEntry };

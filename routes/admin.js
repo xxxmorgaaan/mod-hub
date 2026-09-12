@@ -1,10 +1,12 @@
 // routes/admin.js
 const express = require('express');
+const path = require('path');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const db = require('../src/db');
 const { requireAdmin, requireOwner } = require('../src/auth');
 const { toCsv, humanSize } = require('../src/helpers');
+const { listZipEntries, readZipEntry } = require('../src/scan');
 
 const router = express.Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false,
@@ -115,6 +117,50 @@ router.post('/admin/bundles/:id/reject', (req, res) => {
 });
 
 // ---------------------------------------------------------------- таблица модов
+// ---------------------------------------------------------------- просмотр файлов мода (ручная проверка)
+const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+const TEXT_EXT = ['.json', '.txt', '.md'];
+function fileKind(entryPath) {
+  const ext = entryPath.slice(entryPath.lastIndexOf('.')).toLowerCase();
+  if (IMAGE_EXT.includes(ext)) return 'image';
+  if (TEXT_EXT.includes(ext)) return 'text';
+  return 'other';
+}
+
+router.get('/admin/mods/:id/inspect', async (req, res) => {
+  const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
+  if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
+  const versions = db.prepare('SELECT * FROM mod_versions WHERE mod_id = ? ORDER BY id DESC').all(mod.id);
+  const version = req.query.version
+    ? versions.find(v => String(v.id) === req.query.version)
+    : versions[0];
+  if (!version) return res.render('admin/inspect', { title: `Файлы: ${mod.name}`, mod, versions, version: null, entries: [], error: null, humanSize });
+
+  try {
+    const entries = (await listZipEntries(path.join(__dirname, '..', 'public', version.file_path)))
+      .map(e => ({ ...e, kind: fileKind(e.path) }));
+    res.render('admin/inspect', { title: `Файлы: ${mod.name}`, mod, versions, version, entries, error: null, humanSize });
+  } catch (err) {
+    res.render('admin/inspect', { title: `Файлы: ${mod.name}`, mod, versions, version, entries: [], error: 'Не удалось открыть архив: ' + err.message, humanSize });
+  }
+});
+
+router.get('/admin/mods/:id/inspect/file', async (req, res) => {
+  const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
+  if (!mod) return res.status(404).send('not found');
+  const version = db.prepare('SELECT * FROM mod_versions WHERE id = ? AND mod_id = ?').get(req.query.version, mod.id);
+  if (!version) return res.status(404).send('not found');
+  try {
+    const buf = await readZipEntry(path.join(__dirname, '..', 'public', version.file_path), req.query.path || '');
+    if (!buf) return res.status(404).send('файл не найден в архиве');
+    const ext = (req.query.path || '').slice((req.query.path || '').lastIndexOf('.')).toLowerCase();
+    const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+    res.type(mimeMap[ext] || 'text/plain; charset=utf-8').send(buf);
+  } catch (err) {
+    res.status(500).send('Ошибка чтения файла: ' + err.message);
+  }
+});
+
 router.get('/admin/mods', (req, res) => {
   const mods = db.prepare(`SELECT * FROM mods ORDER BY created_at DESC`).all();
   res.render('admin/mods', { title: 'Все моды', mods });
