@@ -21,17 +21,50 @@ router.post('/admin/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   const cleanUsername = (username || '').trim();
   const cleanPassword = (password || '').trim();
-  const admin = db.prepare('SELECT * FROM admins WHERE username = ?').get(cleanUsername);
+  const admin = db.prepare('SELECT * FROM admins WHERE username = ? COLLATE NOCASE').get(cleanUsername);
   const ok = admin && bcrypt.compareSync(cleanPassword, admin.password_hash);
   if (!ok) {
-    console.log(`[admin] Неудачный вход: логин "${cleanUsername}" — ${admin ? 'пароль не совпал' : 'такого логина нет в базе'}.`);
     return res.status(401).render('admin/login', {
       title: 'Вход в админку',
-      error: 'Неверный логин или пароль. Если уверены, что всё верно — скорее всего, пароль в OWNER_PASSWORD поменяли уже после первого запуска (см. SYNC_OWNER_PASSWORD в README).',
+      error: 'Неверный логин или пароль. Если уверены, что всё верно — воспользуйтесь страницей восстановления доступа (раздел 5 в README).',
     });
   }
   req.session.admin = { id: admin.id, username: admin.username, role: admin.role };
   res.redirect('/admin/moderation');
+});
+
+// ---------------------------------------------------------------- восстановление доступа
+// Работает НАПРЯМУЮ с базой прямо сейчас, без перезапуска и без гадания,
+// подхватились ли переменные окружения — надёжнее, чем всё остальное выше.
+// Включается только явным заданием RESET_TOKEN в переменных окружения —
+// без него страница отвечает 404, как будто её не существует.
+router.get('/admin/emergency-reset', (req, res) => {
+  if (!process.env.RESET_TOKEN) return res.status(404).render('404', { title: 'Страница не найдена' });
+  res.render('admin/emergency-reset', { title: 'Восстановление доступа', error: null, done: null });
+});
+
+router.post('/admin/emergency-reset', loginLimiter, (req, res) => {
+  if (!process.env.RESET_TOKEN) return res.status(404).render('404', { title: 'Страница не найдена' });
+  const token = (req.body.token || '').trim();
+  const newUsername = (req.body.username || '').trim();
+  const newPassword = (req.body.password || '').trim();
+
+  if (!token || token !== process.env.RESET_TOKEN) {
+    return res.status(403).render('admin/emergency-reset', { title: 'Восстановление доступа', error: 'Неверный токен.', done: null });
+  }
+  if (!newUsername || newPassword.length < 6) {
+    return res.status(400).render('admin/emergency-reset', { title: 'Восстановление доступа', error: 'Укажите логин и пароль (минимум 6 символов).', done: null });
+  }
+
+  const hash = bcrypt.hashSync(newPassword, 10);
+  const owner = db.prepare(`SELECT * FROM admins WHERE role = 'owner' LIMIT 1`).get();
+  if (owner) {
+    db.prepare('UPDATE admins SET username = ?, password_hash = ? WHERE id = ?').run(newUsername, hash, owner.id);
+  } else {
+    db.prepare(`INSERT INTO admins (username, password_hash, role) VALUES (?, ?, 'owner')`).run(newUsername, hash);
+  }
+  console.log(`[emergency-reset] Логин и пароль владельца заданы заново: "${newUsername}".`);
+  res.render('admin/emergency-reset', { title: 'Восстановление доступа', error: null, done: newUsername });
 });
 
 router.post('/admin/logout', (req, res) => {
