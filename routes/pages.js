@@ -42,7 +42,7 @@ router.get('/', (req, res) => {
   ).all(game.id).map(attachSummary);
   const modCount = db.prepare(`SELECT COUNT(*) c FROM mods WHERE game_id = ? AND status = 'approved'`).get(game.id).c;
 
-  res.render('home', { title: 'Кузница модов — моды для Alem Colony', game, featured, recent, modCount });
+  res.render('home', { title: 'Alem Mod — моды для Alem Colony', game, featured, recent, modCount });
 });
 
 // ---------------------------------------------------------------- каталог игры

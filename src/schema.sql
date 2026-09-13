@@ -124,3 +124,40 @@ CREATE TABLE IF NOT EXISTS admins (
   role          TEXT NOT NULL DEFAULT 'moderator', -- 'owner' | 'moderator'
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ------------------------------------------------------------- баг-репорты
+-- Публичный трекер багов: без модерации (сразу видно всем, как в обычном
+-- форуме), с картинками, голосами и обсуждением в комментариях.
+
+CREATE TABLE IF NOT EXISTS bug_reports (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  reporter_name TEXT NOT NULL DEFAULT 'Гость',
+  status        TEXT NOT NULL DEFAULT 'open', -- open | in_progress | resolved | wontfix
+  votes         INTEGER NOT NULL DEFAULT 0,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON bug_reports(status);
+
+CREATE TABLE IF NOT EXISTS bug_screenshots (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  bug_id   INTEGER NOT NULL REFERENCES bug_reports(id) ON DELETE CASCADE,
+  path     TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS bug_comments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  bug_id      INTEGER NOT NULL REFERENCES bug_reports(id) ON DELETE CASCADE,
+  author_name TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS bug_votes (
+  bug_id      INTEGER NOT NULL REFERENCES bug_reports(id) ON DELETE CASCADE,
+  voter_token TEXT NOT NULL,
+  PRIMARY KEY (bug_id, voter_token)
+);

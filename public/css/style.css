@@ -1,32 +1,32 @@
 /* ------------------------------------------------------------------ *
- * Кузница модов — сайт: та же тема «мастерская», что и в конструкторе
- * модов — тёмная сталь + отблеск горна (медь/оранж), плюс лёгкий
- * степной зигзаг-орнамент акцентными цветами вместо декоративных
- * «SaaS»-карточек. Mobile-first: базовые стили — для телефона.
+ * Alem Mod — тема «орбита»: глубокий космос + хромированный металлик
+ * значка игры (кольца планеты), акценты — голографический циан и тёплый
+ * янтарь (маячок/двигатель), вместо декоративных «SaaS»-карточек — тонкая
+ * орбитальная полоса под шапкой. Mobile-first: базовые стили — для телефона.
  * ------------------------------------------------------------------ */
 
 :root{
-  --bg:        #14161A;
-  --bg-deep:   #0E1013;
-  --panel:     #1C1F24;
-  --panel-2:   #22262C;
-  --border:    #2E333A;
-  --border-2:  #3A404A;
-  --text:      #E9E6DE;
-  --text-dim:  #9BA1AA;
-  --text-faint:#6B7078;
+  --bg:        #0B0D11;
+  --bg-deep:   #06070A;
+  --panel:     #12151B;
+  --panel-2:   #191D24;
+  --border:    #262B34;
+  --border-2:  #333A46;
+  --text:      #E9EBF0;
+  --text-dim:  #9AA3B2;
+  --text-faint:#656E7D;
 
-  --lime:      #E08A3C;
-  --lime-dim:  #D97230;
-  --violet:    #6FA3C4;
-  --violet-dim:#5A8AAA;
-  --danger:    #D9695B;
-  --warn:      #E08A3C;
-  --ok:        #6FB88A;
+  --lime:      #3FE0D0;
+  --lime-dim:  #2CC2B3;
+  --violet:    #FF9F52;
+  --violet-dim:#E8853A;
+  --danger:    #F0685E;
+  --warn:      #FF9F52;
+  --ok:        #5FD98C;
 
   --radius: 6px;
-  --font-head: 'Manrope', system-ui, sans-serif;
-  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-head: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
   --container: 1180px;
 }
 
@@ -50,18 +50,17 @@ button, input, select, textarea{ font-family: inherit; }
 .container{ max-width: var(--container); margin: 0 auto; padding: 0 16px; }
 
 /* ---------------------------------------------------------------- ORNAMENT */
-.steppe-strip{
-  height: 8px;
-  background: repeating-linear-gradient(135deg,
-    var(--lime) 0 6px, transparent 6px 12px,
-    var(--violet) 12px 18px, transparent 18px 24px);
-  opacity: .55;
+.orbit-strip{
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent, var(--lime), var(--violet), var(--lime), transparent);
+  opacity: .7;
 }
 
 /* ---------------------------------------------------------------- HEADER */
 .site-header{
   position: sticky; top: 0; z-index: 40;
-  background: rgba(13,17,23,.92);
+  background: rgba(11,13,17,.92);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -69,8 +68,8 @@ button, input, select, textarea{ font-family: inherit; }
   display: flex; align-items: center; justify-content: space-between;
   height: 60px;
 }
-.brand{ display: flex; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--text); }
-.brand .mark{ color: var(--lime); font-size: 20px; }
+.brand{ display: flex; align-items: center; gap: 9px; font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--text); }
+.brand .mark{ width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(63,224,208,.35)); }
 .brand small{ color: var(--text-faint); font-weight: 500; font-size: 11px; display: block; }
 
 .nav-toggle{
@@ -114,9 +113,27 @@ button, input, select, textarea{ font-family: inherit; }
 /* ---------------------------------------------------------------- HERO */
 .hero{
   padding: 40px 0 32px;
+  position: relative;
+  overflow: hidden;
   background:
-    radial-gradient(circle at 15% 0%, rgba(155,124,246,.18), transparent 55%),
-    radial-gradient(circle at 85% 10%, rgba(183,242,76,.12), transparent 50%);
+    radial-gradient(circle at 85% 0%, rgba(255,159,82,.14), transparent 55%),
+    radial-gradient(circle at 15% 10%, rgba(63,224,208,.14), transparent 50%);
+}
+.hero::before{
+  content: '';
+  position: absolute; top: -120px; right: -160px;
+  width: 420px; height: 420px;
+  border-radius: 50%;
+  border: 1px solid rgba(63,224,208,.18);
+  pointer-events: none;
+}
+.hero::after{
+  content: '';
+  position: absolute; top: -60px; right: -90px;
+  width: 300px; height: 300px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,159,82,.14);
+  pointer-events: none;
 }
 .hero h1{ font-size: 30px; margin-bottom: 10px; }
 .hero p.lead{ color: var(--text-dim); font-size: 16px; max-width: 60ch; margin: 0 0 22px; }
@@ -171,6 +188,20 @@ a.tag-chip:hover{ color: var(--lime); text-decoration: none; }
 .badge-pending{ background: rgba(242,184,76,.15); color: var(--warn); }
 .badge-rejected{ background: rgba(240,104,94,.15); color: var(--danger); }
 .badge-hidden{ background: rgba(154,164,188,.15); color: var(--text-dim); }
+.badge-bug-open{ background: rgba(240,104,94,.15); color: var(--danger); }
+.badge-bug-in_progress{ background: rgba(255,159,82,.15); color: var(--warn); }
+.badge-bug-resolved{ background: rgba(95,217,140,.15); color: var(--ok); }
+.badge-bug-wontfix{ background: rgba(154,164,188,.15); color: var(--text-dim); }
+
+.bug-list{ display: flex; flex-direction: column; gap: 8px; }
+.bug-row{
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; color: var(--text);
+}
+.bug-row:hover{ border-color: var(--border-2); text-decoration: none; }
+.bug-row-title{ font-weight: 600; flex: 1; min-width: 160px; }
+.bug-row-meta{ color: var(--text-faint); font-size: 12.5px; white-space: nowrap; }
 
 /* ---------------------------------------------------------------- FORMS */
 .form-panel{ background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
@@ -240,7 +271,11 @@ table{ border-collapse: collapse; width: 100%; min-width: 640px; }
 th, td{ text-align: left; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th{ color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: var(--panel); }
 tr:hover td{ background: rgba(255,255,255,.02); }
-.row-actions{ display: flex; gap: 6px; }
+.row-actions{ display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row-actions select{
+  background: var(--panel-2); border: 1px solid var(--border-2); color: var(--text);
+  font-family: inherit; font-size: 12.5px; padding: 6px 8px; border-radius: 4px;
+}
 
 .mod-review-card{ border: 1px solid var(--border); border-left: 3px solid var(--warn); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; background: var(--panel); }
 

@@ -39,6 +39,12 @@ const uploadScreens = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 8 },
 });
 
+const uploadBugScreens = multer({
+  storage: storageFor('bugs'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+});
+
 const uploadArchive = multer({
   storage: storageFor('archives'),
   fileFilter: archiveFilter,
@@ -64,4 +70,4 @@ const uploadModFiles = multer({
   limits: { fileSize: 100 * 1024 * 1024, files: 10 },
 });
 
-module.exports = { uploadCover, uploadScreens, uploadArchive, uploadModFiles, UPLOAD_ROOT };
+module.exports = { uploadCover, uploadScreens, uploadBugScreens, uploadArchive, uploadModFiles, UPLOAD_ROOT };

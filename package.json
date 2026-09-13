@@ -1,7 +1,7 @@
 {
   "name": "kuznitsa-modov-site",
   "version": "1.0.0",
-  "description": "Кузница модов — каталог и хаб модов для Alem Colony: публикация, сборки, жалобы, модерация, админка",
+  "description": "Alem Mod — каталог и хаб модов для Alem Colony: публикация, сборки, жалобы, модерация, админка, баг-трекер",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

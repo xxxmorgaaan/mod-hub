@@ -1,25 +1,26 @@
 /* ------------------------------------------------------------------ *
- * Кузница модов Alem — тема «мастерская»: тёмная сталь + отблеск горна.
+ * Кузница модов — инструмент в составе Alem Mod. Палитра подогнана под
+ * общий сайт: глубокий космос + циан/янтарь с логотипа игры.
  * ------------------------------------------------------------------ */
 
 :root{
-  --bg:        #14161A;
-  --rail:      #191B20;
-  --panel:     #1C1F24;
-  --panel-2:   #22262C;
-  --border:    #2E333A;
-  --border-2:  #3A404A;
-  --text:      #E9E6DE;
-  --text-dim:  #9BA1AA;
-  --text-faint:#6B7078;
-  --accent:    #E08A3C;
-  --accent-2:  #D97230;
-  --steel:     #6FA3C4;
-  --danger:    #D9695B;
-  --ok:        #6FB88A;
+  --bg:        #0B0D11;
+  --rail:      #0E1015;
+  --panel:     #12151B;
+  --panel-2:   #191D24;
+  --border:    #262B34;
+  --border-2:  #333A46;
+  --text:      #E9EBF0;
+  --text-dim:  #9AA3B2;
+  --text-faint:#656E7D;
+  --accent:    #3FE0D0;
+  --accent-2:  #2CC2B3;
+  --steel:     #FF9F52;
+  --danger:    #F0685E;
+  --ok:        #5FD98C;
 
   --radius: 4px;
-  --font-ui: 'Manrope', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 }
 
@@ -72,9 +73,8 @@ code{
   border-bottom: 1px solid var(--border);
 }
 .rail-brand-mark{
-  font-size: 22px;
-  color: var(--accent);
-  filter: drop-shadow(0 0 6px rgba(224,138,60,.35));
+  width: 26px; height: 26px; object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(63,224,208,.35));
 }
 .rail-brand-title{ font-weight: 800; font-size: 15px; letter-spacing: .01em; }
 .rail-brand-sub{ font-size: 12px; color: var(--text-dim); }

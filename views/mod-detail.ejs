@@ -23,7 +23,7 @@
 
     <div class="info-col">
       <h1><%= mod.name %></h1>
-      <% if (mod.tags.length) { %>
+      <% if (tags.length) { %>
       <div class="tag-row" style="margin-bottom:12px;">
         <% tags.forEach(t => { %><a class="tag-chip" href="/games/<%= game.slug %>?tag=<%= encodeURIComponent(t) %>"><%= t %></a><% }) %>
       </div>

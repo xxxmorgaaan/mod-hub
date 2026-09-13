@@ -213,6 +213,21 @@ router.post('/admin/bundles/:id/delete', (req, res) => {
 });
 
 // ---------------------------------------------------------------- жалобы
+// ---------------------------------------------------------------- баг-репорты
+router.get('/admin/bugs', (req, res) => {
+  const bugs = db.prepare('SELECT * FROM bug_reports ORDER BY created_at DESC').all();
+  res.render('admin/bugs', { title: 'Баг-репорты', bugs, bugsEnabled: process.env.BUGS_ENABLED === 'true' });
+});
+router.post('/admin/bugs/:id/status', (req, res) => {
+  const status = ['open', 'in_progress', 'resolved', 'wontfix'].includes(req.body.status) ? req.body.status : 'open';
+  db.prepare(`UPDATE bug_reports SET status = ?, updated_at = datetime('now') WHERE id = ?`).run(status, req.params.id);
+  res.redirect('/admin/bugs');
+});
+router.post('/admin/bugs/:id/delete', (req, res) => {
+  db.prepare('DELETE FROM bug_reports WHERE id = ?').run(req.params.id);
+  res.redirect('/admin/bugs');
+});
+
 router.get('/admin/complaints', (req, res) => {
   const complaints = db.prepare(`SELECT * FROM complaints ORDER BY (status = 'open') DESC, updated_at DESC`).all().map(c => {
     const last = db.prepare('SELECT body, sender FROM complaint_messages WHERE complaint_id = ? ORDER BY id DESC LIMIT 1').get(c.id);

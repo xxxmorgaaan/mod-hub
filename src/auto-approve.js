@@ -45,7 +45,7 @@ function sweepOnce(minutes) {
 }
 
 function startAutoApproveSweep() {
-  const minutes = process.env.AUTO_APPROVE_MINUTES !== undefined ? Number(process.env.AUTO_APPROVE_MINUTES) : 5;
+  const minutes = process.env.AUTO_APPROVE_MINUTES !== undefined ? Number(process.env.AUTO_APPROVE_MINUTES) : 2;
   if (!minutes || minutes <= 0) {
     console.log('[auto-approve] Отключено (AUTO_APPROVE_MINUTES=0) — только ручная модерация.');
     return;
@@ -55,7 +55,7 @@ function startAutoApproveSweep() {
   setInterval(() => {
     try { sweepOnce(minutes); }
     catch (err) { console.warn('[auto-approve] Ошибка при проверке очереди:', err.message); }
-  }, 60 * 1000);
+  }, 30 * 1000); // тик почаще — окно теперь короткое (по умолчанию 2 мин), раз в минуту было бы слишком грубо
 }
 
 module.exports = { startAutoApproveSweep };
