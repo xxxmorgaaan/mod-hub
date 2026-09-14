@@ -1,6 +1,6 @@
 // src/helpers.js
+const crypto = require('crypto');
 const { nanoid } = require('nanoid');
-const bcrypt = require('bcryptjs');
 
 function slugify(str) {
   const translitMap = {
@@ -14,19 +14,54 @@ function slugify(str) {
   return `${base}-${nanoid(5).toLowerCase()}`;
 }
 
-/** Код управления = <id записи>.<случайная часть>, так что проверка — O(1) по id,
- *  а bcrypt сравнивает только случайную часть (сам код нигде не хранится в открытом виде). */
-function issueControlCode(recordId) {
-  const secret = nanoid(14);
-  const code = `${recordId}.${secret}`;
-  const hash = bcrypt.hashSync(secret, 10);
-  return { code, hash };
+// Коды управления хранятся ОБРАТИМО зашифрованными (AES-256-GCM), а не
+// одноразовым хэшем — специально, чтобы админ мог посмотреть код мода и
+// подсказать его автору, если тот его потерял и написал в ЛС. Ключ шифрования
+// живёт в ENCRYPTION_KEY (.env) — от него зависит и шифрование, и расшифровка,
+// поэтому его нельзя терять и нельзя коммитить в открытый репозиторий.
+function getEncKey() {
+  const raw = process.env.ENCRYPTION_KEY || 'change-me-to-a-long-random-string';
+  return crypto.createHash('sha256').update(raw).digest(); // всегда ровно 32 байта для aes-256
 }
 
-function verifyControlCode(code, hash) {
-  if (!code || !code.includes('.')) return false;
-  const secret = code.slice(code.indexOf('.') + 1);
-  return bcrypt.compareSync(secret, hash);
+function encryptCode(plain) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getEncKey(), iv);
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString('base64');
+}
+
+function decryptCode(stored) {
+  try {
+    const buf = Buffer.from(stored, 'base64');
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const enc = buf.subarray(28);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', getEncKey(), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
+  } catch (err) {
+    return null; // испорчено, или зашифровано другим ENCRYPTION_KEY
+  }
+}
+
+/** Код управления = <id записи>.<случайная часть> — по id проверка O(1),
+ *  сама запись в базе хранится зашифрованной (см. выше), не в открытом виде. */
+function issueControlCode(recordId) {
+  const code = `${recordId}.${nanoid(14)}`;
+  return { code, hash: encryptCode(code) };
+}
+
+function verifyControlCode(code, stored) {
+  if (!code) return false;
+  const decrypted = decryptCode(stored);
+  return decrypted !== null && decrypted === code;
+}
+
+/** Для админки — достать код обратно, чтобы подсказать забывчивому автору. */
+function revealControlCode(stored) {
+  return decryptCode(stored);
 }
 
 function recordIdFromCode(code) {
@@ -60,4 +95,13 @@ function humanSize(bytes) {
   return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-module.exports = { slugify, issueControlCode, verifyControlCode, recordIdFromCode, getVoterToken, toCsv, humanSize };
+/** Может ли этот запрос управлять записью: либо верный код, либо это админ в своей сессии. */
+function canManage(req, code, hash) {
+  if (req.session && req.session.admin) return true;
+  return verifyControlCode(code, hash);
+}
+
+module.exports = {
+  slugify, issueControlCode, verifyControlCode, revealControlCode, recordIdFromCode,
+  getVoterToken, toCsv, humanSize, canManage,
+};

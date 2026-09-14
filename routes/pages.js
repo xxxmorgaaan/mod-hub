@@ -2,7 +2,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const db = require('../src/db');
-const { slugify, issueControlCode, verifyControlCode, recordIdFromCode, getVoterToken } = require('../src/helpers');
+const { slugify, issueControlCode, verifyControlCode, recordIdFromCode, getVoterToken, canManage } = require('../src/helpers');
 const { uploadModFiles } = require('../src/upload');
 const { scanUpload, safeUnlink } = require('../src/scan');
 
@@ -34,9 +34,10 @@ function attachSummary(mod) {
 // ---------------------------------------------------------------- главная
 router.get('/', (req, res) => {
   const game = getGameBySlug('alem-colony');
+  const POPULAR_LIKES_THRESHOLD = 10;
   const featured = db.prepare(
-    `SELECT * FROM mods WHERE game_id = ? AND status = 'approved' ORDER BY likes DESC, created_at DESC LIMIT 6`
-  ).all(game.id).map(attachSummary);
+    `SELECT * FROM mods WHERE game_id = ? AND status = 'approved' AND likes >= ? ORDER BY likes DESC, created_at DESC LIMIT 6`
+  ).all(game.id, POPULAR_LIKES_THRESHOLD).map(attachSummary);
   const recent = db.prepare(
     `SELECT * FROM mods WHERE game_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 6`
   ).all(game.id).map(attachSummary);
@@ -212,7 +213,7 @@ router.get('/mods/:id/edit', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.query.code || '';
-  if (!verifyControlCode(code, mod.control_code_hash)) {
+  if (!canManage(req, code, mod.control_code_hash)) {
     return res.status(403).render('manage', { title: 'Управление по коду', error: 'Код не подходит к этому моду.' });
   }
   res.render('mod-form', {
@@ -226,7 +227,7 @@ router.post('/mods/:id', uploadModFiles.fields([{ name: 'cover', maxCount: 1 }, 
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!verifyControlCode(code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
 
   const name = (req.body.name || mod.name).trim();
   const summary = (req.body.summary || '').trim();
@@ -255,7 +256,7 @@ router.post('/mods/:id/versions', uploadModFiles.fields([{ name: 'archive', maxC
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!verifyControlCode(code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
   const archive = req.files.archive && req.files.archive[0];
   if (!archive) return res.redirect(`/mods/${mod.id}/edit?code=${encodeURIComponent(code)}`);
 
@@ -284,7 +285,7 @@ router.post('/mods/:id/delete', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!verifyControlCode(code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
   db.prepare('DELETE FROM mods WHERE id = ?').run(mod.id);
   res.redirect('/');
 });

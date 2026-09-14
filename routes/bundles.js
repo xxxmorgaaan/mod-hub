@@ -4,7 +4,7 @@ const path = require('path');
 const archiver = require('archiver');
 const rateLimit = require('express-rate-limit');
 const db = require('../src/db');
-const { slugify, issueControlCode, verifyControlCode, getVoterToken } = require('../src/helpers');
+const { slugify, issueControlCode, verifyControlCode, getVoterToken, canManage } = require('../src/helpers');
 const { uploadModFiles } = require('../src/upload');
 
 const router = express.Router();
@@ -84,7 +84,7 @@ router.get('/bundles/:id/edit', (req, res) => {
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.query.code || '';
-  if (!verifyControlCode(code, bundle.control_code_hash)) {
+  if (!canManage(req, code, bundle.control_code_hash)) {
     return res.status(403).render('manage', { title: 'Управление по коду', error: 'Код не подходит к этой сборке.' });
   }
   const game = db.prepare('SELECT * FROM games WHERE id = ?').get(bundle.game_id);
@@ -97,7 +97,7 @@ router.post('/bundles/:id', uploadModFiles.fields([{ name: 'cover', maxCount: 1 
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.body.code || '';
-  if (!verifyControlCode(code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
 
   const name = (req.body.name || bundle.name).trim();
   const summary = (req.body.summary || '').trim();
@@ -119,7 +119,7 @@ router.post('/bundles/:id/delete', (req, res) => {
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.body.code || '';
-  if (!verifyControlCode(code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
   db.prepare('DELETE FROM bundles WHERE id = ?').run(bundle.id);
   res.redirect('/');
 });

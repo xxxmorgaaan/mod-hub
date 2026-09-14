@@ -1,11 +1,13 @@
 // routes/admin.js
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const archiver = require('archiver');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const db = require('../src/db');
 const { requireAdmin, requireOwner } = require('../src/auth');
-const { toCsv, humanSize } = require('../src/helpers');
+const { toCsv, humanSize, revealControlCode } = require('../src/helpers');
 const { listZipEntries, readZipEntry } = require('../src/scan');
 
 const router = express.Router();
@@ -162,7 +164,8 @@ router.get('/admin/mods/:id/inspect/file', async (req, res) => {
 });
 
 router.get('/admin/mods', (req, res) => {
-  const mods = db.prepare(`SELECT * FROM mods ORDER BY created_at DESC`).all();
+  const mods = db.prepare(`SELECT * FROM mods ORDER BY created_at DESC`).all()
+    .map(m => ({ ...m, controlCode: revealControlCode(m.control_code_hash) }));
   res.render('admin/mods', { title: 'Все моды', mods });
 });
 router.get('/admin/mods/export.csv', (req, res) => {
@@ -188,7 +191,8 @@ router.post('/admin/mods/:id/delete', (req, res) => {
 
 // ---------------------------------------------------------------- таблица сборок
 router.get('/admin/bundles', (req, res) => {
-  const bundles = db.prepare(`SELECT * FROM bundles ORDER BY created_at DESC`).all();
+  const bundles = db.prepare(`SELECT * FROM bundles ORDER BY created_at DESC`).all()
+    .map(b => ({ ...b, controlCode: revealControlCode(b.control_code_hash) }));
   res.render('admin/bundles', { title: 'Все сборки', bundles });
 });
 router.get('/admin/bundles/export.csv', (req, res) => {
@@ -291,6 +295,30 @@ router.post('/admin/admins/:id/delete', requireOwner, (req, res) => {
   const target = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.params.id);
   if (target && target.role !== 'owner') db.prepare('DELETE FROM admins WHERE id = ?').run(req.params.id);
   res.redirect('/admin/admins');
+});
+
+// ---------------------------------------------------------------- резервная копия (для переноса на другой хостинг)
+// Всё, что нужно для переезда на новый хост: сама база SQLite и все
+// загруженные файлы (обложки, скриншоты, архивы модов, картинки багов).
+// Распаковать этот .zip в корень нового проекта той же структурой — сайт
+// продолжит работать с теми же данными.
+router.get('/admin/backup', requireOwner, (req, res) => {
+  res.attachment(`alem-mod-backup-${new Date().toISOString().slice(0, 10)}.zip`);
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  archive.on('error', (err) => { throw err; });
+  archive.pipe(res);
+
+  const dataDir = path.join(__dirname, '..', 'data');
+  const dbFile = path.join(dataDir, 'modbuild.db');
+  if (fs.existsSync(dbFile)) archive.file(dbFile, { name: 'data/modbuild.db' });
+
+  const uploadDirs = ['covers', 'screenshots', 'archives', 'bugs'];
+  uploadDirs.forEach(dir => {
+    const full = path.join(__dirname, '..', 'public', 'uploads', dir);
+    if (fs.existsSync(full)) archive.directory(full, `public/uploads/${dir}`);
+  });
+
+  archive.finalize();
 });
 
 // ---------------------------------------------------------------- настройки (свой пароль)

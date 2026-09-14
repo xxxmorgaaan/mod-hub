@@ -1,4 +1,10 @@
 // routes/bugs.js
+// Смонтирован в server.js как app.use('/bugs', ...) — поэтому все пути
+// здесь относительные (без повторного '/bugs' в начале). Раньше тут было
+// app.use('/', ...) с проверкой-выключателем через router.use(fn) без пути,
+// и такая проверка перехватывала АБСОЛЮТНО ВСЕ запросы, доходящие до этого
+// роутера — включая /admin.html и весь остальной сайт, смонтированный
+// после него. Собственно из-за этого не открывался вход в админку.
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const db = require('../src/db');
@@ -9,7 +15,8 @@ const router = express.Router();
 
 // Раздел выключен по умолчанию (готов, но ещё не объявлен) — поставьте
 // BUGS_ENABLED=true в переменных окружения, когда будете готовы его открыть.
-// Пока выключено, все /bugs-адреса отвечают 404, как будто их не существует.
+// Проверка привязана именно к этому роутеру (смонтирован на /bugs), так что
+// затрагивает только сам баг-трекер и никак не влияет на остальной сайт.
 router.use((req, res, next) => {
   if (process.env.BUGS_ENABLED === 'true') return next();
   return res.status(404).render('404', { title: 'Страница не найдена' });
@@ -26,7 +33,7 @@ function commentsCountFor(bugId) {
   return db.prepare('SELECT COUNT(*) c FROM bug_comments WHERE bug_id = ?').get(bugId).c;
 }
 
-router.get('/bugs', (req, res) => {
+router.get('/', (req, res) => {
   const status = ['open', 'in_progress', 'resolved', 'wontfix'].includes(req.query.status) ? req.query.status : '';
   const sort = req.query.sort === 'votes' ? 'votes DESC, created_at DESC' : 'created_at DESC';
   let sql = 'SELECT * FROM bug_reports';
@@ -41,11 +48,11 @@ router.get('/bugs', (req, res) => {
   res.render('bugs', { title: 'Баг-репорты', bugs, status, sort: req.query.sort || 'new', counts });
 });
 
-router.get('/bugs/new', (req, res) => {
+router.get('/new', (req, res) => {
   res.render('bug-form', { title: 'Сообщить о баге', error: null });
 });
 
-router.post('/bugs', createLimiter, uploadBugScreens.array('screenshots', 5), (req, res) => {
+router.post('/', createLimiter, uploadBugScreens.array('screenshots', 5), (req, res) => {
   const title = (req.body.title || '').trim();
   const description = (req.body.description || '').trim();
   const reporterName = (req.body.reporter_name || 'Гость').trim().slice(0, 40);
@@ -62,7 +69,7 @@ router.post('/bugs', createLimiter, uploadBugScreens.array('screenshots', 5), (r
   res.redirect(`/bugs/${info.lastInsertRowid}`);
 });
 
-router.get('/bugs/:id', (req, res) => {
+router.get('/:id', (req, res) => {
   const bug = db.prepare('SELECT * FROM bug_reports WHERE id = ?').get(req.params.id);
   if (!bug) return res.status(404).render('404', { title: 'Баг-репорт не найден' });
   const screenshots = screenshotsFor(bug.id);
@@ -72,7 +79,7 @@ router.get('/bugs/:id', (req, res) => {
   res.render('bug-detail', { title: bug.title, bug, screenshots, comments, voted });
 });
 
-router.post('/bugs/:id/vote', writeLimiter, (req, res) => {
+router.post('/:id/vote', writeLimiter, (req, res) => {
   const bug = db.prepare('SELECT * FROM bug_reports WHERE id = ?').get(req.params.id);
   if (!bug) return res.status(404).json({ error: 'not found' });
   const voter = getVoterToken(req, res);
@@ -88,7 +95,7 @@ router.post('/bugs/:id/vote', writeLimiter, (req, res) => {
   res.json({ votes: fresh.votes, voted: !existing });
 });
 
-router.post('/bugs/:id/comments', writeLimiter, (req, res) => {
+router.post('/:id/comments', writeLimiter, (req, res) => {
   const bug = db.prepare('SELECT * FROM bug_reports WHERE id = ?').get(req.params.id);
   if (!bug) return res.status(404).send('not found');
   const authorName = (req.body.author_name || 'Гость').trim().slice(0, 40);

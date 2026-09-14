@@ -52,7 +52,7 @@ app.use((req, res, next) => {
 app.use('/', require('./routes/pages'));
 app.use('/', require('./routes/bundles'));
 app.use('/', require('./routes/complaints'));
-app.use('/', require('./routes/bugs'));
+app.use('/bugs', require('./routes/bugs'));
 app.use('/', require('./routes/admin'));
 
 // ---------------------------------------------------------------- 404
@@ -66,6 +66,18 @@ app.use((req, res) => {
 // сервис неактивным на бесплатных/спящих планах).
 app.get('/healthz', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// ---------------------------------------------------------------- обработка ошибок
+// Общий перехватчик: что бы ни упало (даже неожиданно) — обычный игрок
+// видит спокойную страницу, а не стек вызовов с путями к файлам и кодом.
+// Технические подробности уходят только в серверный лог (Railway → Logs),
+// туда игрок не заглядывает. Должен идти последним — после всех роутов.
+app.use((err, req, res, next) => {
+  console.error('[error]', req.method, req.originalUrl, '—', err.message);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500);
+  res.render('500', { title: 'Что-то пошло не так' });
 });
 
 app.listen(PORT, () => {

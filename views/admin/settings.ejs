@@ -17,6 +17,12 @@
     <div class="field"><label>Новый пароль (минимум 6 символов)</label><input type="password" name="new_password" required minlength="6"></div>
     <button class="btn btn-primary btn-block" type="submit">Сохранить</button>
   </form>
+
+  <% if (admin.role === 'owner') { %>
+  <h2 style="margin-top:28px;">Резервная копия</h2>
+  <p class="hint">База данных и все загруженные файлы (обложки, скриншоты, архивы модов, картинки багов) одним архивом — пригодится при переезде на другой хостинг: просто распакуйте его в корень проекта на новом месте той же структурой папок.</p>
+  <a class="btn btn-ghost btn-block" href="/admin/backup">⬇ Скачать резервную копию (.zip)</a>
+  <% } %>
 </main>
 
 <%- include('../partials/footer') %>
