@@ -44,6 +44,7 @@ app.use((req, res, next) => {
   res.locals.gameDevTelegram = process.env.GAME_DEV_TELEGRAM || '@alemcolony';
   res.locals.modBuilderUrl = process.env.MOD_BUILDER_URL || '/builder/';
   res.locals.admin = (req.session && req.session.admin) || null;
+  res.locals.user = (req.session && req.session.user) || null;
   res.locals.bugsEnabled = process.env.BUGS_ENABLED === 'true';
   next();
 });
@@ -53,6 +54,7 @@ app.use('/', require('./routes/pages'));
 app.use('/', require('./routes/bundles'));
 app.use('/', require('./routes/complaints'));
 app.use('/bugs', require('./routes/bugs'));
+app.use('/', require('./routes/auth'));
 app.use('/', require('./routes/admin'));
 
 // ---------------------------------------------------------------- 404

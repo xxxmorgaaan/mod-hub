@@ -95,9 +95,11 @@ function humanSize(bytes) {
   return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-/** Может ли этот запрос управлять записью: либо верный код, либо это админ в своей сессии. */
-function canManage(req, code, hash) {
+/** Может ли этот запрос управлять записью: верный код, ИЛИ админ в своей сессии,
+ *  ИЛИ вошедший разработчик — владелец записи (аккаунт, необязательная альтернатива коду). */
+function canManage(req, code, hash, ownerUserId) {
   if (req.session && req.session.admin) return true;
+  if (req.session && req.session.user && ownerUserId && req.session.user.id === ownerUserId) return true;
   return verifyControlCode(code, hash);
 }
 

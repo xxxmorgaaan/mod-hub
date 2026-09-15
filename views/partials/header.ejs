@@ -12,7 +12,12 @@
       <a href="/mods/new">Опубликовать мод</a>
       <a href="/bundles/new">Собрать сборку</a>
       <% if (bugsEnabled) { %><a href="/bugs">Баг-репорты</a><% } %>
-      <a href="/manage.html">Управление по коду</a>
+      <a href="/manage.html">🔑 Управление по коду</a>
+      <% if (user) { %>
+        <a href="/account">👤 <%= user.username %></a>
+      <% } else { %>
+        <a href="/login">Войти</a>
+      <% } %>
     </nav>
   </div>
   <div class="orbit-strip"></div>

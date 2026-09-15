@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><%- include('partials/head', { title }) %></head>
+<body>
+<%- include('partials/header') %>
+
+<main class="container section">
+  <div class="section-head">
+    <h2>Личный кабинет — <%= user.username %></h2>
+    <form method="post" action="/logout"><button class="btn btn-ghost btn-sm" type="submit">Выйти</button></form>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+    <a class="btn btn-primary btn-sm" href="/mods/new">+ Опубликовать мод</a>
+    <a class="btn btn-ghost btn-sm" href="/bundles/new">+ Собрать сборку</a>
+  </div>
+
+  <h2>Мои моды (<%= mods.length %>)</h2>
+  <% if (!mods.length) { %>
+    <p class="hint">Пока ничего не опубликовано.</p>
+  <% } else { %>
+  <div class="table-scroll" style="margin-bottom:28px;">
+    <table>
+      <thead><tr><th>Название</th><th>Статус</th><th>Код (на всякий случай)</th><th>Действия</th></tr></thead>
+      <tbody>
+        <% mods.forEach(m => { %>
+        <tr>
+          <td><a href="/mods/<%= m.id %>" target="_blank"><%= m.name %></a></td>
+          <td><span class="badge badge-<%= m.status %>"><%= m.status %></span></td>
+          <td><% if (m.controlCode) { %><code class="code-pill" data-copy="<%= m.controlCode %>" title="Скопировать"><%= m.controlCode %></code><% } %></td>
+          <td class="row-actions"><a class="btn btn-ghost btn-sm" href="/mods/<%= m.id %>/edit">✏️ Редактировать</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <h2>Мои сборки (<%= bundles.length %>)</h2>
+  <% if (!bundles.length) { %>
+    <p class="hint">Пока ничего не опубликовано.</p>
+  <% } else { %>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Название</th><th>Статус</th><th>Код (на всякий случай)</th><th>Действия</th></tr></thead>
+      <tbody>
+        <% bundles.forEach(b => { %>
+        <tr>
+          <td><a href="/bundles/<%= b.public_id %>" target="_blank"><%= b.name %></a></td>
+          <td><span class="badge badge-<%= b.status %>"><%= b.status %></span></td>
+          <td><% if (b.controlCode) { %><code class="code-pill" data-copy="<%= b.controlCode %>" title="Скопировать"><%= b.controlCode %></code><% } %></td>
+          <td class="row-actions"><a class="btn btn-ghost btn-sm" href="/bundles/<%= b.public_id %>/edit">✏️ Редактировать</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</main>
+
+<script>
+document.querySelectorAll('[data-copy]').forEach(function(el){
+  el.addEventListener('click', function(){
+    navigator.clipboard.writeText(el.dataset.copy).then(function(){
+      var old = el.textContent;
+      el.textContent = 'Скопировано!';
+      setTimeout(function(){ el.textContent = old; }, 1200);
+    });
+  });
+});
+</script>
+<%- include('partials/footer') %>
+</body>
+</html>

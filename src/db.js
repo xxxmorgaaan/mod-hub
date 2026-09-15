@@ -25,6 +25,18 @@ if (!modVersionCols.includes('scan_note')) {
   console.log('[db] Миграция: добавлена колонка mod_versions.scan_note');
 }
 
+// Та же история для user_id — появился вместе с аккаунтами разработчиков.
+const modCols = db.prepare("PRAGMA table_info(mods)").all().map(c => c.name);
+if (!modCols.includes('user_id')) {
+  db.exec('ALTER TABLE mods ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  console.log('[db] Миграция: добавлена колонка mods.user_id');
+}
+const bundleCols = db.prepare("PRAGMA table_info(bundles)").all().map(c => c.name);
+if (!bundleCols.includes('user_id')) {
+  db.exec('ALTER TABLE bundles ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  console.log('[db] Миграция: добавлена колонка bundles.user_id');
+}
+
 function seed() {
   const gameExists = db.prepare('SELECT 1 FROM games WHERE slug = ?').get('alem-colony');
   if (!gameExists) {

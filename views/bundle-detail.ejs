@@ -22,6 +22,11 @@
         </button>
         <button type="button" class="btn btn-ghost btn-sm" onclick="navigator.share ? navigator.share({title:'<%= bundle.name %>', url: location.href}) : (navigator.clipboard.writeText(location.href), alert('Ссылка скопирована'))">Поделиться</button>
         <a class="btn btn-ghost btn-sm" href="/report/bundle/<%= bundle.public_id %>">⚠ Пожаловаться</a>
+        <% if (authorized) { %>
+          <a class="btn btn-ghost btn-sm" href="/bundles/<%= bundle.public_id %>/edit?code=<%= encodeURIComponent(code) %>">✏️ Редактировать</a>
+        <% } else { %>
+          <a class="btn btn-ghost btn-sm" href="/manage.html">🔑 Это ваша сборка? Управлять</a>
+        <% } %>
       </div>
       <a class="btn btn-primary btn-block" href="/bundles/<%= bundle.public_id %>/download-all">Скачать все моды (.zip)</a>
       <% if (bundle.description) { %><h2 style="margin-top:22px;">Описание</h2><p style="white-space:pre-wrap;color:var(--text-dim);"><%= bundle.description %></p><% } %>

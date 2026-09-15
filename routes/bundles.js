@@ -53,23 +53,23 @@ router.post('/bundles', createLimiter, uploadModFiles.fields([{ name: 'cover', m
   const publicId = slugify(name);
   const { code, hash } = issueControlCode(publicId);
   const cover = req.files.cover && req.files.cover[0];
+  const ownerUserId = (req.session && req.session.user) ? req.session.user.id : null;
 
   const info = db.prepare(
-    `INSERT INTO bundles (public_id, game_id, slug, name, summary, description, cover_path, control_code_hash, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
-  ).run(publicId, game.id, publicId, name, summary, description, cover ? `/uploads/covers/${cover.filename}` : null, hash);
+    `INSERT INTO bundles (public_id, game_id, slug, name, summary, description, cover_path, control_code_hash, user_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+  ).run(publicId, game.id, publicId, name, summary, description, cover ? `/uploads/covers/${cover.filename}` : null, hash, ownerUserId);
 
   const insBm = db.prepare('INSERT OR IGNORE INTO bundle_mods (bundle_id, mod_id) VALUES (?, ?)');
   modIds.forEach(mid => insBm.run(info.lastInsertRowid, mid));
 
-  res.render('mod-published', { title: 'Сборка отправлена на модерацию', mod: { id: publicId, name, slug: publicId }, code, isBundle: true });
+  res.render('mod-published', { title: 'Сборка отправлена на модерацию', mod: { id: publicId, name, slug: publicId }, code, isBundle: true, loggedIn: !!ownerUserId });
 });
 
 router.get('/bundles/:id', (req, res) => {
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
-  const authorized = (req.session && req.session.admin)
-    || (req.query.code ? verifyControlCode(req.query.code, bundle.control_code_hash) : false);
+  const authorized = canManage(req, req.query.code || '', bundle.control_code_hash, bundle.user_id);
   if (bundle.status !== 'approved' && !authorized) {
     return res.status(403).render('pending', { title: 'Сборка ещё на модерации', mod: bundle });
   }
@@ -84,7 +84,7 @@ router.get('/bundles/:id/edit', (req, res) => {
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.query.code || '';
-  if (!canManage(req, code, bundle.control_code_hash)) {
+  if (!canManage(req, code, bundle.control_code_hash, bundle.user_id)) {
     return res.status(403).render('manage', { title: 'Управление по коду', error: 'Код не подходит к этой сборке.' });
   }
   const game = db.prepare('SELECT * FROM games WHERE id = ?').get(bundle.game_id);
@@ -97,7 +97,7 @@ router.post('/bundles/:id', uploadModFiles.fields([{ name: 'cover', maxCount: 1 
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.body.code || '';
-  if (!canManage(req, code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, bundle.control_code_hash, bundle.user_id)) return res.status(403).send('Неверный код управления.');
 
   const name = (req.body.name || bundle.name).trim();
   const summary = (req.body.summary || '').trim();
@@ -119,7 +119,7 @@ router.post('/bundles/:id/delete', (req, res) => {
   const bundle = db.prepare('SELECT * FROM bundles WHERE public_id = ?').get(req.params.id);
   if (!bundle) return res.status(404).render('404', { title: 'Сборка не найдена' });
   const code = req.body.code || '';
-  if (!canManage(req, code, bundle.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, bundle.control_code_hash, bundle.user_id)) return res.status(403).send('Неверный код управления.');
   db.prepare('DELETE FROM bundles WHERE id = ?').run(bundle.id);
   res.redirect('/');
 });

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS mods (
   description        TEXT,
   cover_path         TEXT,
   control_code_hash  TEXT NOT NULL,
+  user_id            INTEGER REFERENCES users(id) ON DELETE SET NULL,
   status             TEXT NOT NULL DEFAULT 'pending', -- pending | approved | rejected | hidden
   moderation_note    TEXT,
   downloads          INTEGER NOT NULL DEFAULT 0,
@@ -78,6 +79,7 @@ CREATE TABLE IF NOT EXISTS bundles (
   description       TEXT,
   cover_path        TEXT,
   control_code_hash TEXT NOT NULL,
+  user_id           INTEGER REFERENCES users(id) ON DELETE SET NULL,
   status            TEXT NOT NULL DEFAULT 'pending',
   moderation_note   TEXT,
   likes             INTEGER NOT NULL DEFAULT 0,
@@ -122,6 +124,19 @@ CREATE TABLE IF NOT EXISTS admins (
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL DEFAULT 'moderator', -- 'owner' | 'moderator'
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ------------------------------------------------------- аккаунты разработчиков
+-- Необязательная альтернатива коду управления: кто не хочет хранить код,
+-- может завести логин/пароль — тогда все его моды и сборки видно и можно
+-- редактировать из личного кабинета без кода вообще. Код при этом всё
+-- равно выдаётся (для запасного доступа), просто можно не запоминать.
+
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  username      TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

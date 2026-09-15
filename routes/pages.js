@@ -102,8 +102,7 @@ router.get('/mods/:slug', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE slug = ?').get(req.params.slug);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
 
-  const authorized = (req.session && req.session.admin)
-    || (req.query.code ? verifyControlCode(req.query.code, mod.control_code_hash) : false);
+  const authorized = canManage(req, req.query.code || '', mod.control_code_hash, mod.user_id);
   if (mod.status !== 'approved' && !authorized) {
     return res.status(403).render('pending', { title: 'Мод ещё на модерации', mod });
   }
@@ -165,10 +164,11 @@ router.post('/mods', createLimiter, uploadModFiles.fields([
   const id = slugify(name);
   const slug = id;
   const { code, hash } = issueControlCode(id);
+  const ownerUserId = (req.session && req.session.user) ? req.session.user.id : null;
 
-  db.prepare(`INSERT INTO mods (id, game_id, slug, name, summary, description, cover_path, control_code_hash, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`)
-    .run(id, game.id, slug, name, summary, description, cover ? `/uploads/covers/${cover.filename}` : null, hash);
+  db.prepare(`INSERT INTO mods (id, game_id, slug, name, summary, description, cover_path, control_code_hash, user_id, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`)
+    .run(id, game.id, slug, name, summary, description, cover ? `/uploads/covers/${cover.filename}` : null, hash, ownerUserId);
 
   const insTag = db.prepare('INSERT OR IGNORE INTO mod_tags (mod_id, tag) VALUES (?, ?)');
   tags.forEach(t => insTag.run(id, t));
@@ -180,7 +180,7 @@ router.post('/mods', createLimiter, uploadModFiles.fields([
               VALUES (?, ?, ?, ?, ?, 'pending', ?)`)
     .run(id, versionLabel, changelog, `/uploads/archives/${archive.filename}`, archive.size, scan.note);
 
-  res.render('mod-published', { title: 'Мод отправлен на модерацию', mod: { id, name, slug }, code });
+  res.render('mod-published', { title: 'Мод отправлен на модерацию', mod: { id, name, slug }, code, loggedIn: !!ownerUserId });
 });
 
 // ---------------------------------------------------------------- управление по коду
@@ -213,7 +213,7 @@ router.get('/mods/:id/edit', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.query.code || '';
-  if (!canManage(req, code, mod.control_code_hash)) {
+  if (!canManage(req, code, mod.control_code_hash, mod.user_id)) {
     return res.status(403).render('manage', { title: 'Управление по коду', error: 'Код не подходит к этому моду.' });
   }
   res.render('mod-form', {
@@ -227,7 +227,7 @@ router.post('/mods/:id', uploadModFiles.fields([{ name: 'cover', maxCount: 1 }, 
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash, mod.user_id)) return res.status(403).send('Неверный код управления.');
 
   const name = (req.body.name || mod.name).trim();
   const summary = (req.body.summary || '').trim();
@@ -256,7 +256,7 @@ router.post('/mods/:id/versions', uploadModFiles.fields([{ name: 'archive', maxC
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash, mod.user_id)) return res.status(403).send('Неверный код управления.');
   const archive = req.files.archive && req.files.archive[0];
   if (!archive) return res.redirect(`/mods/${mod.id}/edit?code=${encodeURIComponent(code)}`);
 
@@ -285,7 +285,7 @@ router.post('/mods/:id/delete', (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).render('404', { title: 'Мод не найден' });
   const code = req.body.code || '';
-  if (!canManage(req, code, mod.control_code_hash)) return res.status(403).send('Неверный код управления.');
+  if (!canManage(req, code, mod.control_code_hash, mod.user_id)) return res.status(403).send('Неверный код управления.');
   db.prepare('DELETE FROM mods WHERE id = ?').run(mod.id);
   res.redirect('/');
 });
@@ -296,8 +296,7 @@ router.get('/mods/:id/download/:versionId', (req, res) => {
   const version = db.prepare('SELECT * FROM mod_versions WHERE id = ? AND mod_id = ?').get(req.params.versionId, req.params.id);
   if (!mod || !version) return res.status(404).render('404', { title: 'Файл не найден' });
 
-  const authorized = (req.session && req.session.admin)
-    || (req.query.code ? verifyControlCode(req.query.code, mod.control_code_hash) : false);
+  const authorized = canManage(req, req.query.code || '', mod.control_code_hash, mod.user_id);
   const publiclyOk = mod.status === 'approved' && version.status === 'approved';
   if (!publiclyOk && !authorized) {
     return res.status(403).render('pending', { title: 'Файл ещё на модерации', mod });
