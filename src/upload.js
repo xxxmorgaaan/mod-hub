@@ -39,6 +39,19 @@ const uploadScreens = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 8 },
 });
 
+// Резервная копия сайта — кладём во временную папку, после распаковки удаляем.
+const uploadBackup = multer({
+  dest: path.join(UPLOAD_ROOT, 'tmp'),
+  fileFilter: archiveFilter,
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+});
+
+const uploadAvatar = multer({
+  storage: storageFor('avatars'),
+  fileFilter: imageFilter,
+  limits: { fileSize: 2 * 1024 * 1024 },
+});
+
 const uploadBugScreens = multer({
   storage: storageFor('bugs'),
   fileFilter: imageFilter,
@@ -70,4 +83,4 @@ const uploadModFiles = multer({
   limits: { fileSize: 100 * 1024 * 1024, files: 10 },
 });
 
-module.exports = { uploadCover, uploadScreens, uploadBugScreens, uploadArchive, uploadModFiles, UPLOAD_ROOT };
+module.exports = { uploadCover, uploadScreens, uploadAvatar, uploadBackup, uploadBugScreens, uploadArchive, uploadModFiles, UPLOAD_ROOT };

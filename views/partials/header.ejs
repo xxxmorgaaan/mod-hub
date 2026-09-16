@@ -4,19 +4,30 @@
       <img src="/img/logo.png" alt="Alem Mod" class="mark">
       <span>Alem Mod<small>моды для Alem Colony</small></span>
     </a>
-    <button class="nav-toggle" id="navToggle" aria-label="Меню">☰</button>
+    <button class="nav-toggle" id="navToggle" aria-label="Открыть меню" aria-expanded="false">
+      <span class="nav-toggle-icon" id="navToggleIcon">☰</span><span id="navToggleText">Меню</span>
+    </button>
     <nav class="site-nav" id="siteNav">
-      <a href="/builder/">Конструктор модов</a>
-      <a href="/games/alem-colony">Все моды</a>
-      <a href="/games/alem-colony/bundles">Сборки</a>
-      <a href="/mods/new">Опубликовать мод</a>
-      <a href="/bundles/new">Собрать сборку</a>
-      <% if (bugsEnabled) { %><a href="/bugs">Баг-репорты</a><% } %>
-      <a href="/manage.html">🔑 Управление по коду</a>
+      <div class="nav-section">Моды</div>
+      <a href="/games/alem-colony"><span class="nav-ico">🗺</span><span>Все моды<span class="nav-sub">каталог с поиском и тегами</span></span></a>
+      <a href="/games/alem-colony/bundles"><span class="nav-ico">📦</span><span>Сборки<span class="nav-sub">подборки из нескольких модов</span></span></a>
+
+      <div class="nav-section">Опубликовать</div>
+      <a href="/mods/new" class="nav-accent"><span class="nav-ico">⬆</span><span>Опубликовать мод<span class="nav-sub">загрузить готовый .zip</span></span></a>
+      <a href="/bundles/new"><span class="nav-ico">🧩</span><span>Собрать сборку<span class="nav-sub">из опубликованных модов</span></span></a>
+      <% if (builderEnabled) { %>
+      <a href="/builder/"><span class="nav-ico">⚒</span><span>Конструктор модов<span class="nav-sub">собрать мод без ручного JSON</span></span></a>
+      <% } %>
+
+      <div class="nav-section">Мой доступ</div>
       <% if (user) { %>
-        <a href="/account">👤 <%= user.username %></a>
+        <a href="/account"><span class="nav-ico">👤</span><span><%= user.username %><span class="nav-sub">мои моды и сборки</span></span></a>
       <% } else { %>
-        <a href="/login">Войти</a>
+        <a href="/login"><span class="nav-ico">🔓</span><span>Войти<span class="nav-sub">или зарегистрироваться</span></span></a>
+      <% } %>
+      <a href="/manage.html"><span class="nav-ico">🔑</span><span>Управление по коду<span class="nav-sub">редактировать мод без аккаунта</span></span></a>
+      <% if (bugsEnabled) { %>
+      <a href="/bugs"><span class="nav-ico">🐞</span><span>Баг-репорты<span class="nav-sub">только для владельца</span></span></a>
       <% } %>
     </nav>
   </div>

@@ -111,7 +111,11 @@ router.get('/mods/:slug', (req, res) => {
   const versions = versionsFor(mod.id, { onlyApproved: !authorized });
   const screenshots = screenshotsFor(mod.id);
   const tags = tagsFor(mod.id);
-  const comments = db.prepare('SELECT * FROM mod_comments WHERE mod_id = ? ORDER BY created_at DESC').all(mod.id);
+  const comments = db.prepare(
+    `SELECT c.*, u.username author_username, u.avatar_path author_avatar
+     FROM mod_comments c LEFT JOIN users u ON u.id = c.user_id
+     WHERE c.mod_id = ? ORDER BY c.created_at DESC`
+  ).all(mod.id);
   const similar = db.prepare(
     `SELECT DISTINCT m.* FROM mods m JOIN mod_tags t ON t.mod_id = m.id
      WHERE m.game_id = ? AND m.id != ? AND m.status = 'approved' AND t.tag IN (${tags.map(() => '?').join(',') || "''"})
@@ -328,10 +332,14 @@ router.post('/mods/:id/like', writeLimiter, (req, res) => {
 router.post('/mods/:id/comments', writeLimiter, (req, res) => {
   const mod = db.prepare('SELECT * FROM mods WHERE id = ?').get(req.params.id);
   if (!mod) return res.status(404).send('not found');
-  const authorName = (req.body.author_name || 'Гость').trim().slice(0, 40);
   const body = (req.body.body || '').trim().slice(0, 2000);
+  // Вошёл в аккаунт — подписываем его логином, имя из формы игнорируем,
+  // чтобы нельзя было писать под чужим именем. Гость — как представился.
+  const loggedIn = req.session && req.session.user;
+  const authorName = loggedIn ? loggedIn.username : ((req.body.author_name || 'Гость').trim().slice(0, 40) || 'Гость');
   if (body) {
-    db.prepare('INSERT INTO mod_comments (mod_id, author_name, body) VALUES (?, ?, ?)').run(mod.id, authorName, body);
+    db.prepare('INSERT INTO mod_comments (mod_id, author_name, user_id, body) VALUES (?, ?, ?, ?)')
+      .run(mod.id, authorName, loggedIn ? loggedIn.id : null, body);
   }
   res.redirect(`/mods/${mod.id}`);
 });

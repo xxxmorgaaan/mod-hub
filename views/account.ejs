@@ -10,6 +10,27 @@
     <form method="post" action="/logout"><button class="btn btn-ghost btn-sm" type="submit">Выйти</button></form>
   </div>
 
+  <% if (saved) { %><div class="alert alert-ok">Сохранено.</div><% } %>
+
+  <div class="profile-card">
+    <% if (me.avatar_path) { %>
+      <img class="avatar avatar-lg" src="<%= me.avatar_path %>" alt="">
+    <% } else { %>
+      <span class="avatar avatar-lg avatar-letter"><%= user.username.trim().charAt(0).toUpperCase() %></span>
+    <% } %>
+    <div class="profile-card-body">
+      <b><%= user.username %></b>
+      <p class="hint">Аватарка показывается рядом с вашими комментариями. Необязательна — без неё будет кружок с первой буквой логина.</p>
+      <form method="post" action="/account/avatar" enctype="multipart/form-data" class="profile-avatar-form">
+        <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" required>
+        <button class="btn btn-ghost btn-sm" type="submit">Загрузить</button>
+        <% if (me.avatar_path) { %>
+          <button class="btn btn-ghost btn-sm btn-danger" formaction="/account/avatar/delete" formenctype="application/x-www-form-urlencoded" type="submit">Убрать</button>
+        <% } %>
+      </form>
+    </div>
+  </div>
+
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
     <a class="btn btn-primary btn-sm" href="/mods/new">+ Опубликовать мод</a>
     <a class="btn btn-ghost btn-sm" href="/bundles/new">+ Собрать сборку</a>

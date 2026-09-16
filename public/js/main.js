@@ -3,15 +3,21 @@
   // ---------------------------------------------------------------- мобильное меню
   const navToggle = document.getElementById('navToggle');
   const siteNav = document.getElementById('siteNav');
+  const navIcon = document.getElementById('navToggleIcon');
+  const navText = document.getElementById('navToggleText');
   if (navToggle && siteNav) {
-    navToggle.addEventListener('click', () => {
-      siteNav.classList.toggle('is-open');
-      navToggle.textContent = siteNav.classList.contains('is-open') ? '✕' : '☰';
-    });
-    siteNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-      siteNav.classList.remove('is-open');
-      navToggle.textContent = '☰';
-    }));
+    const setOpen = (open) => {
+      siteNav.classList.toggle('is-open', open);
+      navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (navIcon) navIcon.textContent = open ? '✕' : '☰';
+      if (navText) navText.textContent = open ? 'Закрыть' : 'Меню';
+      // Пока меню открыто — страница под ним не скроллится, иначе легко
+      // «потерять» само меню, прокрутив фон.
+      document.body.style.overflow = open ? 'hidden' : '';
+    };
+    navToggle.addEventListener('click', () => setOpen(!siteNav.classList.contains('is-open')));
+    siteNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
   }
 
   // ---------------------------------------------------------------- скрытый вход в админку: 5 кликов по подвалу

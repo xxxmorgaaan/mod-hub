@@ -424,3 +424,312 @@ const WEAPON_TEMPLATE_OPTIONS = [
   { value: 'rifle', label: 'Ружьё / винтовка' },
 ];
 
+
+/* =====================================================================
+ * НОВЫЕ ТАБЛИЦЫ «Мир и жизнь» (разделы 23–31 инструкции)
+ * ===================================================================== */
+
+const BIOME_OPTIONS = ['forest', 'temperate', 'steppe', 'desert', 'tundra'];
+
+SCHEMAS.events = {
+  title: 'событие',
+  keyField: 'id',
+  idFrom: 'title', idCase: 'snake',
+  itemLabel: it => `${it.title || it.id}`,
+  fields: [
+    { name: 'title', label: 'Заголовок письма', type: 'text', required: true, placeholder: 'Караван из Таавуна' },
+    { name: 'id', label: 'id (необязательно — сделаю из заголовка)', type: 'text' },
+    { name: 'text', label: 'Текст письма', type: 'textarea', wide: true, hint: '{colonist} заменится именем случайного колониста.' },
+    { name: 'category', label: 'Категория', type: 'select', options: [
+      { value: '', label: '— по умолчанию (neutral) —' },
+      { value: 'good', label: 'good · хорошее' },
+      { value: 'neutral', label: 'neutral · нейтральное' },
+      { value: 'threat', label: 'threat · угроза' },
+    ] },
+    { name: 'weight', label: 'Вес (частота)', type: 'number', step: '0.1', hint: 'Встроенные события категории весят вместе 4.' },
+    { name: 'cooldownDays', label: 'Не чаще раза в N дней', type: 'number', step: '1' },
+    { name: 'once', label: 'Только один раз за игру', type: 'checkbox' },
+    { name: 'minDay', label: 'С какого дня', type: 'number', step: '1' },
+    { name: 'minColonists', label: 'Мин. колонистов', type: 'number', step: '1' },
+    { name: 'maxColonists', label: 'Макс. колонистов', type: 'number', step: '1' },
+    { name: 'minWealth', label: 'Мин. богатство', type: 'number', step: '1' },
+    { name: 'maxWealth', label: 'Макс. богатство', type: 'number', step: '1' },
+    { name: 'season', label: 'Сезон', type: 'select', options: [
+      { value: '', label: '— любой —' },
+      { value: 'spring', label: 'spring · весна' }, { value: 'summer', label: 'summer · лето' },
+      { value: 'autumn', label: 'autumn · осень' }, { value: 'winter', label: 'winter · зима' },
+    ] },
+    { name: 'minTemp', label: 'Мин. температура', type: 'number', step: '1' },
+    { name: 'maxTemp', label: 'Макс. температура', type: 'number', step: '1' },
+    { name: 'needResource', label: 'Нужен ресурс', type: 'resource' },
+    { name: 'needCount', label: 'Сколько ресурса', type: 'number', step: '1' },
+    { name: 'effects', label: 'Последствия (JSON)', type: 'json', wide: true,
+      placeholder: '[{"type":"give","resource":"Kumys","count":12}]',
+      hint: 'give · take · mood · relation · raid · animal · letter · event. Либо это, либо choices — не оба сразу.' },
+    { name: 'choices', label: 'Выбор из двух вариантов (JSON)', type: 'json', wide: true,
+      placeholder: '[{"text":"Купить","effects":[…]},{"text":"Отказать","effects":[…]}]',
+      hint: 'РОВНО два варианта — с тремя игра событие пропустит.' },
+  ],
+};
+
+SCHEMAS.plants = {
+  title: 'растение',
+  keyField: 'id',
+  idFrom: 'name', idCase: 'snake',
+  itemLabel: it => `${it.name || it.id}`,
+  fields: [
+    { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Саксаул' },
+    { name: 'id', label: 'id (необязательно)', type: 'text', placeholder: 'saxaul' },
+    { name: 'desc', label: 'Описание', type: 'textarea', wide: true },
+    { name: 'texture', label: 'Картинка (спелое)', type: 'text', placeholder: 'plants/saxaul_full' },
+    { name: 'emptyTexture', label: 'Картинка (после сбора)', type: 'text', placeholder: 'plants/saxaul_empty' },
+    { name: 'resource', label: 'Что даёт', type: 'resource' },
+    { name: 'yieldMin', label: 'Урожай: минимум', type: 'number', step: '1' },
+    { name: 'yieldMax', label: 'Урожай: максимум', type: 'number', step: '1' },
+    { name: 'work', label: 'Секунд работы', type: 'number', step: '0.1' },
+    { name: 'regrowDays', label: 'Отрастает за N дней', type: 'number', step: '1' },
+    { name: 'scale', label: 'Размер', type: 'number', step: '0.05' },
+    { name: 'blocks', label: 'Непроходимо', type: 'checkbox' },
+    { name: 'biomes', label: 'Биомы (через запятую)', type: 'list', wide: true, placeholder: 'steppe, desert',
+      hint: BIOME_OPTIONS.join(' · ') + '. Пусто — везде, кроме ледника.' },
+    { name: 'terrain', label: 'Почва (через запятую)', type: 'list', placeholder: 'sand, dirt', hint: 'grass · dirt · sand · mud' },
+    { name: 'chance', label: 'Доля клеток', type: 'number', step: '0.001', hint: '0.004 — примерно одна из 250.' },
+  ],
+};
+
+SCHEMAS.animals = {
+  title: 'дикого зверя',
+  keyField: 'id',
+  idFrom: 'name', idCase: 'snake',
+  itemLabel: it => `${it.name || it.id}`,
+  fields: [
+    { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Дикий верблюд' },
+    { name: 'id', label: 'id (необязательно)', type: 'text' },
+    { name: 'nameFemale', label: 'Название самки', type: 'text' },
+    { name: 'desc', label: 'Описание', type: 'textarea', wide: true },
+    { name: 'behavior', label: 'Повадки (чьи берём)', type: 'text', placeholder: 'deer' },
+    { name: 'texture', label: 'Картинка', type: 'text', placeholder: 'animals/camel_side' },
+    { name: 'hp', label: 'Здоровье', type: 'number', step: '1' },
+    { name: 'bodySize', label: 'Размер тела', type: 'number', step: '0.1' },
+    { name: 'hpMul', label: 'Множитель HP', type: 'number', step: '0.1' },
+    { name: 'speed', label: 'Скорость', type: 'number', step: '0.1' },
+    { name: 'scale', label: 'Размер картинки', type: 'number', step: '0.05' },
+    { name: 'damageMin', label: 'Урон: минимум', type: 'number', step: '1' },
+    { name: 'damageMax', label: 'Урон: максимум', type: 'number', step: '1' },
+    { name: 'meat', label: 'Тип мяса', type: 'resource' },
+    { name: 'meatMin', label: 'Мяса: минимум', type: 'number', step: '1' },
+    { name: 'meatMax', label: 'Мяса: максимум', type: 'number', step: '1' },
+    { name: 'leather', label: 'Шкур', type: 'number', step: '1' },
+    { name: 'biomes', label: 'Биомы (через запятую)', type: 'list', wide: true, placeholder: 'steppe, desert' },
+    { name: 'groups', label: 'Групп на карте', type: 'number', step: '1' },
+    { name: 'groupMin', label: 'В группе: минимум', type: 'number', step: '1' },
+    { name: 'groupMax', label: 'В группе: максимум', type: 'number', step: '1' },
+    { name: 'restock', label: 'Восполнение', type: 'number', step: '0.01' },
+    { name: 'tameTo', label: 'Приручается в вид скота', type: 'text', placeholder: 'Верблюд' },
+  ],
+};
+
+SCHEMAS.livestock = {
+  title: 'скот',
+  keyField: 'species',
+  itemLabel: it => it.species,
+  fields: [
+    { name: 'species', label: 'Вид (ключ)', type: 'text', required: true, placeholder: 'Верблюд',
+      hint: 'Совпал с игровым — правите его; новый — заводите свой вид.' },
+    { name: 'ruName', label: 'Название в тексте', type: 'text', placeholder: 'верблюд' },
+    { name: 'femaleName', label: 'Самка', type: 'text' },
+    { name: 'maleName', label: 'Самец', type: 'text' },
+    { name: 'babyName', label: 'Детёныш', type: 'text' },
+    { name: 'spriteKey', label: 'Картинка (ключ)', type: 'text', placeholder: 'camel' },
+    { name: 'scale', label: 'Размер картинки', type: 'number', step: '0.05' },
+    { name: 'bodySize', label: 'Размер тела', type: 'number', step: '0.1' },
+    { name: 'hpMul', label: 'Множитель HP', type: 'number', step: '0.1' },
+    { name: 'adultDays', label: 'Взрослеет за N дней', type: 'number', step: '1' },
+    { name: 'appetite', label: 'Аппетит', type: 'number', step: '0.1' },
+    { name: 'pregnancyHours', label: 'Беременность, часов', type: 'number', step: '1' },
+    { name: 'product', label: 'Продукт', type: 'text', placeholder: 'milk' },
+    { name: 'productHours', label: 'Продукт раз в N часов', type: 'number', step: '1' },
+    { name: 'productAmount', label: 'Продукта за раз', type: 'number', step: '1' },
+    { name: 'meatType', label: 'Тип мяса', type: 'resource' },
+    { name: 'meat', label: 'Мяса с туши', type: 'number', step: '1' },
+    { name: 'leather', label: 'Шкур с туши', type: 'number', step: '1' },
+    { name: 'price', label: 'Цена', type: 'number', step: '1' },
+    { name: 'maxHerd', label: 'Максимум в стаде', type: 'number', step: '1' },
+    { name: 'minTempC', label: 'Мин. температура, °C', type: 'number', step: '1' },
+    { name: 'mount', label: 'Верховое животное', type: 'checkbox' },
+  ],
+};
+
+SCHEMAS.furniture = {
+  title: 'мебель',
+  keyField: 'id',
+  idFrom: 'name', idCase: 'snake',
+  itemLabel: it => `${it.name || it.id}`,
+  fields: [
+    { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Сундук кочевника' },
+    { name: 'id', label: 'id (необязательно)', type: 'text' },
+    { name: 'desc', label: 'Описание', type: 'textarea', wide: true },
+    { name: 'base', label: 'Основа (чьё поведение берём)', type: 'select', wide: true, options: [
+      { value: '', label: '— без основы: простой предмет 1×1 (декор, свет, преграда) —' },
+      ...['Shelf','MedicineCabinet','Trough','Bed','Nightstand','Table','Chair','Campfire','Brazier','Torch',
+        'ColdBox','ChessTable','Darts','Horseshoes','GymToys','SchoolDesk','Library','MedicineTable','TailorBench',
+        'ChemLab','CookStove','Furnace','SteelFurnace','ButcherTable','StoneTable','ResearchBench','AdvancedBench',
+        'CraftSpot','FermentBarrel','Turret','Barricade','SpikeTrap','WoodTrap','Snare','SiegeWeapon','PowerBuilding',
+        'Grave','Memorial','Crematorium'].map(v => ({ value: v, label: v })),
+    ], hint: 'Стены, полы, двери, мосты, заборы, провода, телеги и шахтный ствол за основу брать нельзя.' },
+    { name: 'variant', label: 'Вариант основы', type: 'text', placeholder: 'Single', hint: 'У кровати Single/Double/Hospital/Cradle, у энергосети Lamp/Heater/Cooler, у осадного Ballista/Mortar…' },
+    { name: 'texture', label: 'Картинка', type: 'text', placeholder: 'furniture/chest' },
+    { name: 'cost', label: 'Материалы', type: 'materialList', wide: true, hint: 'Пусто — как у основы.' },
+    { name: 'work', label: 'Время стройки', type: 'number', step: '1', hint: '0 — как у основы.' },
+    { name: 'hp', label: 'Прочность', type: 'number', step: '1', hint: '0 — как у основы.' },
+    { name: 'light', label: 'Радиус света', type: 'number', step: '1' },
+    { name: 'lightColor', label: 'Цвет света', type: 'color' },
+    { name: 'blocks', label: 'Непроходимо', type: 'checkbox' },
+    { name: 'scale', label: 'Размер картинки', type: 'number', step: '0.05' },
+    { name: 'research', label: 'Ключ технологии', type: 'text', placeholder: 'building:steppe_chest', hint: 'Пусто — доступна сразу.' },
+  ],
+};
+
+SCHEMAS.factions = {
+  title: 'державу',
+  keyField: 'name',
+  itemLabel: it => it.name,
+  fields: [
+    { name: 'name', label: 'Название (ключ)', type: 'text', required: true, placeholder: 'Орда Каракум',
+      hint: 'Совпал с игровым — правите его; новое — новая держава на глобусе.' },
+    { name: 'archetype', label: 'Архетип', type: 'select', options: [
+      { value: '', label: '— не задано —' },
+      { value: 'raiders', label: 'raiders · налётчики' },
+      { value: 'tribal', label: 'tribal · племя' },
+      { value: 'traders', label: 'traders · торговцы' },
+      { value: 'smiths', label: 'smiths · кузнецы' },
+      { value: 'healers', label: 'healers · лекари' },
+      { value: 'syndicate', label: 'syndicate · синдикат' },
+      { value: 'outlaw', label: 'outlaw · вне закона' },
+    ] },
+    { name: 'color', label: 'Цвет на глобусе', type: 'color' },
+    { name: 'alwaysHostile', label: 'Всегда враждебна', type: 'checkbox' },
+    { name: 'tech', label: 'Техуровень (0…5)', type: 'number', step: '0.1', min: 0, max: 5 },
+    { name: 'citiesMin', label: 'Городов: минимум', type: 'number', step: '1' },
+    { name: 'citiesMax', label: 'Городов: максимум', type: 'number', step: '1' },
+    { name: 'relationMin', label: 'Отношения: минимум', type: 'number', step: '1' },
+    { name: 'relationMax', label: 'Отношения: максимум', type: 'number', step: '1' },
+  ],
+};
+
+SCHEMAS.biomes = {
+  title: 'настройку биома',
+  keyField: 'id',
+  itemLabel: it => it.id,
+  fields: [
+    { name: 'id', label: 'Биом', type: 'select', required: true, options: [
+      { value: '', label: '— выберите —' },
+      ...BIOME_OPTIONS.map(v => ({ value: v, label: v })),
+    ], hint: 'Новый биом добавить нельзя — можно настроить эти пять.' },
+    { name: 'trees', label: 'Густота деревьев', type: 'number', step: '0.1' },
+    { name: 'rocks', label: 'Густота валунов', type: 'number', step: '0.1' },
+    { name: 'bushes', label: 'Густота кустов', type: 'number', step: '0.1' },
+    { name: 'richSoil', label: 'Богатая почва', type: 'number', step: '0.01', hint: '0.05 — заметно.' },
+    { name: 'wildlife', label: 'Количество дичи', type: 'number', step: '0.1' },
+    { name: 'temp', label: 'Прибавка к температуре, °C', type: 'number', step: '1' },
+  ],
+};
+
+SCHEMAS.quests = {
+  title: 'заказ',
+  keyField: 'id',
+  idFrom: 'title', idCase: 'snake',
+  itemLabel: it => `${it.title || it.id}`,
+  fields: [
+    { name: 'title', label: 'Заголовок', type: 'text', required: true, placeholder: 'Кочевникам: {0} × {1}',
+      hint: '{0} — количество, {1} — ресурс.' },
+    { name: 'id', label: 'id (необязательно)', type: 'text' },
+    { name: 'text', label: 'Текст письма', type: 'textarea', wide: true,
+      hint: 'Доступны {giver}, {amount}, {item}, {days}.' },
+    { name: 'archetypes', label: 'Архетипы держав (через запятую)', type: 'list', wide: true, placeholder: 'tribal, traders' },
+    { name: 'factions', label: 'Только эти державы (через запятую)', type: 'list', wide: true },
+    { name: 'minRelation', label: 'Мин. отношения', type: 'number', step: '1' },
+    { name: 'minDay', label: 'С какого дня', type: 'number', step: '1' },
+    { name: 'weight', label: 'Вес (частота)', type: 'number', step: '0.1', hint: 'Обычный заказ игры весит 3.' },
+    { name: 'items', label: 'Что просят (через запятую)', type: 'list', wide: true, placeholder: 'FeltCloth, DriedMeat' },
+    { name: 'amountMin', label: 'Количество: минимум', type: 'number', step: '1' },
+    { name: 'amountMax', label: 'Количество: максимум', type: 'number', step: '1' },
+    { name: 'daysMin', label: 'Срок: минимум дней', type: 'number', step: '1' },
+    { name: 'daysMax', label: 'Срок: максимум дней', type: 'number', step: '1' },
+    { name: 'moneyMin', label: 'Оплата: минимум', type: 'number', step: '1' },
+    { name: 'moneyMax', label: 'Оплата: максимум', type: 'number', step: '1' },
+    { name: 'rewards', label: 'Награда ресурсами (JSON)', type: 'json', wide: true, placeholder: '[{"resource":"Iron","min":15,"max":30}]' },
+    { name: 'relation', label: 'Прибавка к отношениям', type: 'number', step: '1' },
+    { name: 'research', label: 'Очки исследований', type: 'number', step: '1' },
+  ],
+};
+
+SCHEMAS.needs = {
+  title: 'потребность',
+  keyField: 'id',
+  idFrom: 'name', idCase: 'snake',
+  itemLabel: it => `${it.name || it.id}`,
+  fields: [
+    { name: 'name', label: 'Название шкалы', type: 'text', required: true, placeholder: 'Жажда' },
+    { name: 'id', label: 'id (необязательно)', type: 'text', placeholder: 'thirst' },
+    { name: 'color', label: 'Цвет шкалы', type: 'color' },
+    { name: 'start', label: 'Стартовое значение', type: 'number', step: '1' },
+    { name: 'drainPerHour', label: 'Убывает за час', type: 'number', step: '0.1' },
+    { name: 'lowAt', label: 'Считается низкой при', type: 'number', step: '1',
+      hint: 'Ниже этого скриптам приходит on_need_low(имя, id).' },
+    { name: 'moods', label: 'Настроение при падении (JSON)', type: 'json', wide: true,
+      placeholder: '[{"below":45,"mood":-3,"text":"Хочется пить"}]' },
+  ],
+};
+
+SCHEMAS.storytellers = {
+  title: 'рассказчика',
+  keyField: 'name',
+  itemLabel: it => it.name,
+  fields: [
+    { name: 'name', label: 'Имя', type: 'text', required: true, placeholder: 'Буран' },
+    { name: 'character', label: 'Характер', type: 'text', placeholder: 'Беспощадный' },
+    { name: 'styleLine', label: 'Строка описания', type: 'text', wide: true, placeholder: 'бьёт волнами и почти не даёт продохнуть' },
+    { name: 'style', label: 'Стиль', type: 'text', placeholder: 'waves' },
+    { name: 'tensionPerDay', label: 'Напряжение за день', type: 'number', step: '1' },
+    { name: 'raidShare', label: 'Доля налётов (0…1)', type: 'number', step: '0.05' },
+    { name: 'sizeMin', label: 'Размер отряда: минимум', type: 'number', step: '0.1' },
+    { name: 'sizeMax', label: 'Размер отряда: максимум', type: 'number', step: '0.1' },
+    { name: 'graceMin', label: 'Передышка в начале, дней', type: 'number', step: '1' },
+    { name: 'cavalryDay', label: 'Конница с какого дня', type: 'number', step: '1' },
+  ],
+};
+
+SCHEMAS.challenges = {
+  title: 'испытание',
+  keyField: 'id',
+  idFrom: 'name', idCase: 'snake',
+  itemLabel: it => `${it.name || it.id}`,
+  fields: [
+    { name: 'name', label: 'Название', type: 'text', required: true, placeholder: 'Хозяин табуна' },
+    { name: 'id', label: 'id (необязательно)', type: 'text' },
+    { name: 'desc', label: 'Описание', type: 'textarea', wide: true },
+    { name: 'rules', label: 'Правила (через запятую)', type: 'list', wide: true },
+    { name: 'goal', label: 'Тип цели', type: 'text', placeholder: 'script' },
+    { name: 'goalValue', label: 'Значение цели', type: 'number', step: '1' },
+    { name: 'goalText', label: 'Текст цели', type: 'text', wide: true },
+    { name: 'colonists', label: 'Колонистов на старте', type: 'number', step: '1' },
+    { name: 'difficulty', label: 'Сложность', type: 'number', step: '1' },
+    { name: 'graceDays', label: 'Передышка, дней', type: 'number', step: '1' },
+    { name: 'starDay', label: 'День звезды', type: 'number', step: '1' },
+    { name: 'planetSeed', label: 'Зерно планеты', type: 'number', step: '1' },
+    { name: 'cargo', label: 'Стартовый груз (JSON)', type: 'json', wide: true, placeholder: '[{"resource":"Food","count":120}]' },
+    { name: 'weapons', label: 'Стартовое оружие (через запятую)', type: 'list', wide: true },
+    { name: 'startTech', label: 'Изученные техи (через запятую)', type: 'list', wide: true },
+  ],
+};
+
+SCHEMAS.info = {
+  title: 'описание «?»',
+  keyField: 'key',
+  itemLabel: it => it.key,
+  fields: [
+    { name: 'key', label: 'Ключ записи', type: 'text', required: true },
+    { name: 'text', label: 'Текст описания', type: 'textarea', wide: true },
+  ],
+};

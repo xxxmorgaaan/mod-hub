@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const db = require('../src/db');
 const { revealControlCode } = require('../src/helpers');
+const { uploadAvatar } = require('../src/upload');
 
 const router = express.Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
@@ -69,7 +70,25 @@ router.get('/account', (req, res) => {
     .map(m => ({ ...m, controlCode: revealControlCode(m.control_code_hash) }));
   const bundles = db.prepare('SELECT * FROM bundles WHERE user_id = ? ORDER BY created_at DESC').all(req.session.user.id)
     .map(b => ({ ...b, controlCode: revealControlCode(b.control_code_hash) }));
-  res.render('account', { title: 'Личный кабинет', mods, bundles });
+  const me = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.user.id);
+  res.render('account', { title: 'Личный кабинет', mods, bundles, me, saved: !!req.query.saved });
+});
+
+// Аватарка — необязательна: если не загружать, везде показывается кружок
+// с первой буквой логина, так что «пустых» мест в интерфейсе не будет.
+router.post('/account/avatar', authLimiter, uploadAvatar.single('avatar'), (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  if (req.file) {
+    db.prepare('UPDATE users SET avatar_path = ? WHERE id = ?')
+      .run(`/uploads/avatars/${req.file.filename}`, req.session.user.id);
+  }
+  res.redirect('/account?saved=1');
+});
+
+router.post('/account/avatar/delete', (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+  db.prepare('UPDATE users SET avatar_path = NULL WHERE id = ?').run(req.session.user.id);
+  res.redirect('/account?saved=1');
 });
 
 module.exports = router;

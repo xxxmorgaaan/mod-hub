@@ -37,6 +37,18 @@ if (!bundleCols.includes('user_id')) {
   console.log('[db] Миграция: добавлена колонка bundles.user_id');
 }
 
+// Аватарки и авторство комментариев — появились позже таблиц.
+const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+if (userCols.length && !userCols.includes('avatar_path')) {
+  db.exec('ALTER TABLE users ADD COLUMN avatar_path TEXT');
+  console.log('[db] Миграция: добавлена колонка users.avatar_path');
+}
+const commentCols = db.prepare("PRAGMA table_info(mod_comments)").all().map(c => c.name);
+if (commentCols.length && !commentCols.includes('user_id')) {
+  db.exec('ALTER TABLE mod_comments ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  console.log('[db] Миграция: добавлена колонка mod_comments.user_id');
+}
+
 function seed() {
   const gameExists = db.prepare('SELECT 1 FROM games WHERE slug = ?').get('alem-colony');
   if (!gameExists) {

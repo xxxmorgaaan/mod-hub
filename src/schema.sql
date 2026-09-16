@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS mod_comments (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   mod_id      TEXT NOT NULL REFERENCES mods(id) ON DELETE CASCADE,
   author_name TEXT NOT NULL,
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL, -- NULL = комментарий гостя
   body        TEXT NOT NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -137,6 +138,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  avatar_path   TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

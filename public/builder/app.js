@@ -125,7 +125,25 @@ const STORAGE_KEY = 'alemModBuilder.state.v1';
 const TABLE_KEYS = [
   'weapons', 'materials', 'apparel', 'resources', 'recipes', 'buildings',
   'techs', 'traits', 'traitPairs', 'childhoods', 'adulthoods', 'rareFullfirst', 'loc',
+  // «Мир и жизнь» — разделы 23–31 инструкции
+  'events', 'plants', 'animals', 'livestock', 'furniture',
+  'factions', 'biomes', 'quests', 'needs', 'storytellers', 'challenges', 'info',
 ];
+
+// Таблицы, которые ложатся в свой файл «как есть»: имя файла → ключ списка внутри.
+const SIMPLE_TABLE_FILES = {
+  events: ['events.json', 'events'],
+  plants: ['plants.json', 'plants'],
+  animals: ['animals.json', 'animals'],
+  livestock: ['livestock.json', 'livestock'],
+  furniture: ['furniture.json', 'furniture'],
+  factions: ['factions.json', 'factions'],
+  biomes: ['biomes.json', 'biomes'],
+  quests: ['quests.json', 'quests'],
+  needs: ['needs.json', 'needs'],
+  storytellers: ['storytellers.json', 'storytellers'],
+  challenges: ['challenges.json', 'challenges'],
+};
 
 function defaultState() {
   const tables = {};
@@ -1129,6 +1147,20 @@ function buildFilesPayload() {
   if (state.tables.recipes.length) files['recipes.json'] = { recipes: state.tables.recipes };
   if (state.tables.buildings.length) files['buildings.json'] = { buildings: state.tables.buildings };
   if (state.tables.techs.length) files['techs.json'] = { techs: state.tables.techs };
+
+  // Таблицы «Мир и жизнь» — каждая в свой файл, одинаковой формой.
+  Object.entries(SIMPLE_TABLE_FILES).forEach(([tableKey, [fileName, listKey]]) => {
+    if (state.tables[tableKey] && state.tables[tableKey].length) {
+      files[fileName] = { [listKey]: state.tables[tableKey] };
+    }
+  });
+
+  // info.json — не список, а объект «ключ записи → текст».
+  if (state.tables.info.length) {
+    const entries = {};
+    state.tables.info.forEach(row => { if (row.key) entries[row.key] = row.text || ''; });
+    files['info.json'] = { entries };
+  }
 
   // pawns.json
   const pawns = {};

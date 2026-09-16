@@ -33,21 +33,38 @@ app.use(session({
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'), {
   maxAge: '30d', // обложки/скриншоты/архивы не перезаписываются на месте — новый файл всегда новое имя
 }));
-app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '1h', // css/js/картинки конструктора правятся редко, но имя файла не версионируется — час за глаза
-}));
 
 // ---------------------------------------------------------------- locals для всех шаблонов
+// Идёт ДО любых мест, где может отрендериться страница (включая 404 у
+// охранника /builder ниже) — иначе шаблон шапки упадёт на неопределённых
+// переменных.
 app.use((req, res, next) => {
   res.locals.siteAuthorName = process.env.SITE_AUTHOR_NAME || 'МОРГАН';
   res.locals.siteAuthorTelegram = process.env.SITE_AUTHOR_TELEGRAM || '@Xxmorgaan';
   res.locals.gameDevTelegram = process.env.GAME_DEV_TELEGRAM || '@alemcolony';
-  res.locals.modBuilderUrl = process.env.MOD_BUILDER_URL || '/builder/';
   res.locals.admin = (req.session && req.session.admin) || null;
   res.locals.user = (req.session && req.session.user) || null;
-  res.locals.bugsEnabled = process.env.BUGS_ENABLED === 'true';
+  res.locals.isOwner = !!(req.session && req.session.admin && req.session.admin.role === 'owner');
+  // Баг-трекер и конструктор модов — только для владельца: и сам раздел, и
+  // ссылки на него в шапке/подвале показываются только ему.
+  res.locals.bugsEnabled = res.locals.isOwner;
+  res.locals.builderEnabled = res.locals.isOwner;
+  // Рекламный блок РСЯ в подвале — показывается, только если задан id блока.
+  res.locals.yandexAdBlockId = (process.env.YANDEX_AD_BLOCK_ID || '').trim();
   next();
 });
+
+// ---------------------------------------------------------------- конструктор модов — только владельцу
+// Стоит ДО express.static, иначе статика отдала бы /builder/ всем подряд,
+// не спрашивая никого. Владелец — тот, кто вошёл в админку с ролью owner.
+app.use('/builder', (req, res, next) => {
+  if (res.locals.isOwner) return next();
+  return res.status(404).render('404', { title: 'Страница не найдена' });
+});
+
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1h', // css/js/картинки конструктора правятся редко, но имя файла не версионируется — час за глаза
+}));
 
 // ---------------------------------------------------------------- роуты
 app.use('/', require('./routes/pages'));

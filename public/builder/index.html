@@ -36,6 +36,11 @@
       <button class="rail-tab" data-tab="buildings">Постройки</button>
       <button class="rail-tab" data-tab="techs">Технологии</button>
       <button class="rail-tab" data-tab="pawns">Персонажи</button>
+      <button class="rail-tab" data-tab="events">События</button>
+      <button class="rail-tab" data-tab="nature">Природа</button>
+      <button class="rail-tab" data-tab="furniture">Мебель</button>
+      <button class="rail-tab" data-tab="world">Мир</button>
+      <button class="rail-tab" data-tab="rules">Правила игры</button>
       <button class="rail-tab" data-tab="loc">Перевод</button>
       <button class="rail-tab" data-tab="textures">Текстуры</button>
       <button class="rail-tab" data-tab="export">Экспорт</button>
@@ -235,6 +240,90 @@
 
       <h2 class="sub-h">Списки имён</h2>
       <div class="namelist-grid" id="nameListsForm"></div>
+    </section>
+
+    <!-- СОБЫТИЯ -->
+    <section class="panel" id="tab-events">
+      <header class="panel-head">
+        <h1>События <span class="count-badge" data-count-for="events">0</span></h1>
+        <p>Таблица <code>events.json → events</code>. Письмо игроку посреди партии. Либо «Последствия», либо «Выбор из двух вариантов» — не оба сразу.</p>
+      </header>
+      <div class="form-mount" data-schema="events"></div>
+      <div class="table-mount" data-schema="events"></div>
+    </section>
+
+    <!-- ПРИРОДА -->
+    <section class="panel" id="tab-nature">
+      <header class="panel-head">
+        <h1>Растения <span class="count-badge" data-count-for="plants">0</span></h1>
+        <p>Таблица <code>plants.json → plants</code>. Ведёт себя как ягодный куст: помечают на сбор, колонист собирает, растение отрастает.</p>
+      </header>
+      <div class="form-mount" data-schema="plants"></div>
+      <div class="table-mount" data-schema="plants"></div>
+
+      <h2 class="sub-h">Дикие звери <span class="count-badge" data-count-for="animals">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Таблица <code>animals.json → animals</code>.</p>
+      <div class="form-mount" data-schema="animals"></div>
+      <div class="table-mount" data-schema="animals"></div>
+
+      <h2 class="sub-h">Домашний скот <span class="count-badge" data-count-for="livestock">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Таблица <code>livestock.json → livestock</code>. Ключ — <code>species</code>. Пустое поле = «оставить как есть», поэтому для правки хватит одной строки.</p>
+      <div class="form-mount" data-schema="livestock"></div>
+      <div class="table-mount" data-schema="livestock"></div>
+    </section>
+
+    <!-- МЕБЕЛЬ -->
+    <section class="panel" id="tab-furniture">
+      <header class="panel-head">
+        <h1>Мебель и станки <span class="count-badge" data-count-for="furniture">0</span></h1>
+        <p>Таблица <code>furniture.json → furniture</code>. В отличие от «Построек», эта таблица ДОБАВЛЯЕТ постройки: поле «Основа» берёт поведение игровой постройки, а имя, картинку, цену и прочность задаёте вы.</p>
+      </header>
+      <div class="form-mount" data-schema="furniture"></div>
+      <div class="table-mount" data-schema="furniture"></div>
+    </section>
+
+    <!-- МИР -->
+    <section class="panel" id="tab-world">
+      <header class="panel-head">
+        <h1>Державы <span class="count-badge" data-count-for="factions">0</span></h1>
+        <p>Таблица <code>factions.json → factions</code>. Ключ — <code>name</code>. Правки игровых держав применяются только в новой игре.</p>
+      </header>
+      <div class="form-mount" data-schema="factions"></div>
+      <div class="table-mount" data-schema="factions"></div>
+
+      <h2 class="sub-h">Биомы <span class="count-badge" data-count-for="biomes">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Таблица <code>biomes.json → biomes</code>. Новый биом добавить нельзя — настраиваются существующие пять.</p>
+      <div class="form-mount" data-schema="biomes"></div>
+      <div class="table-mount" data-schema="biomes"></div>
+
+      <h2 class="sub-h">Заказы держав <span class="count-badge" data-count-for="quests">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Таблица <code>quests.json → quests</code>. Только поставка; заказы дают дружественные державы.</p>
+      <div class="form-mount" data-schema="quests"></div>
+      <div class="table-mount" data-schema="quests"></div>
+    </section>
+
+    <!-- ПРАВИЛА ИГРЫ -->
+    <section class="panel" id="tab-rules">
+      <header class="panel-head">
+        <h1>Потребности <span class="count-badge" data-count-for="needs">0</span></h1>
+        <p>Таблица <code>needs.json → needs</code>. Новая шкала у колониста: убывает сама, портит настроение при падении.</p>
+      </header>
+      <div class="form-mount" data-schema="needs"></div>
+      <div class="table-mount" data-schema="needs"></div>
+
+      <h2 class="sub-h">Рассказчики <span class="count-badge" data-count-for="storytellers">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Таблица <code>storytellers.json → storytellers</code>. Задаёт ритм партии.</p>
+      <div class="form-mount" data-schema="storytellers"></div>
+      <div class="table-mount" data-schema="storytellers"></div>
+
+      <h2 class="sub-h">Испытания <span class="count-badge" data-count-for="challenges">0</span></h2>
+      <div class="form-mount" data-schema="challenges"></div>
+      <div class="table-mount" data-schema="challenges"></div>
+
+      <h2 class="sub-h">Описания «?» <span class="count-badge" data-count-for="info">0</span></h2>
+      <p class="field-hint" style="margin-bottom:10px;">Файл <code>info.json → entries</code>: ключ записи → текст.</p>
+      <div class="form-mount" data-schema="info"></div>
+      <div class="table-mount" data-schema="info"></div>
     </section>
 
     <!-- ПЕРЕВОД -->

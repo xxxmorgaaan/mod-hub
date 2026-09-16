@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
+const unzipper = require('unzipper');
+const { uploadBackup } = require('../src/upload');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const db = require('../src/db');
@@ -220,7 +222,7 @@ router.post('/admin/bundles/:id/delete', (req, res) => {
 // ---------------------------------------------------------------- баг-репорты
 router.get('/admin/bugs', (req, res) => {
   const bugs = db.prepare('SELECT * FROM bug_reports ORDER BY created_at DESC').all();
-  res.render('admin/bugs', { title: 'Баг-репорты', bugs, bugsEnabled: process.env.BUGS_ENABLED === 'true' });
+  res.render('admin/bugs', { title: 'Баг-репорты', bugs });
 });
 router.post('/admin/bugs/:id/status', (req, res) => {
   const status = ['open', 'in_progress', 'resolved', 'wontfix'].includes(req.body.status) ? req.body.status : 'open';
@@ -302,6 +304,45 @@ router.post('/admin/admins/:id/delete', requireOwner, (req, res) => {
 // загруженные файлы (обложки, скриншоты, архивы модов, картинки багов).
 // Распаковать этот .zip в корень нового проекта той же структурой — сайт
 // продолжит работать с теми же данными.
+// Загрузка резервной копии обратно: распаковывает архив, сделанный кнопкой
+// выше, поверх текущих данных. База подменяется целиком, поэтому после
+// восстановления процесс нужно перезапустить — иначе сервер продолжит
+// работать со старым, уже открытым файлом БД.
+router.post('/admin/restore', requireOwner, uploadBackup.single('backup'), async (req, res) => {
+  if (!req.file) return res.redirect('/admin/settings');
+  const rootDir = path.join(__dirname, '..');
+  let restoredDb = false;
+  let restoredFiles = 0;
+  try {
+    const directory = await unzipper.Open.file(req.file.path);
+    for (const entry of directory.files) {
+      if (entry.type !== 'File') continue;
+      // Пускаем только те пути, которые сами же кладём в бэкап — чтобы
+      // архив не мог записать что-то поверх кода приложения.
+      const ok = entry.path === 'data/modbuild.db'
+        || /^public\/uploads\/(covers|screenshots|archives|bugs|avatars)\/[^/]+$/.test(entry.path);
+      if (!ok || entry.path.includes('..')) continue;
+
+      const dest = path.join(rootDir, entry.path);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, await entry.buffer());
+      if (entry.path === 'data/modbuild.db') restoredDb = true; else restoredFiles++;
+    }
+  } catch (err) {
+    fs.unlink(req.file.path, () => {});
+    return res.render('admin/settings', {
+      title: 'Настройки', saved: false,
+      error: 'Не удалось прочитать архив резервной копии: ' + err.message,
+      restored: null,
+    });
+  }
+  fs.unlink(req.file.path, () => {});
+  res.render('admin/settings', {
+    title: 'Настройки', saved: false, error: null,
+    restored: { db: restoredDb, files: restoredFiles },
+  });
+});
+
 router.get('/admin/backup', requireOwner, (req, res) => {
   res.attachment(`alem-mod-backup-${new Date().toISOString().slice(0, 10)}.zip`);
   const archive = archiver('zip', { zlib: { level: 9 } });
@@ -312,7 +353,7 @@ router.get('/admin/backup', requireOwner, (req, res) => {
   const dbFile = path.join(dataDir, 'modbuild.db');
   if (fs.existsSync(dbFile)) archive.file(dbFile, { name: 'data/modbuild.db' });
 
-  const uploadDirs = ['covers', 'screenshots', 'archives', 'bugs'];
+  const uploadDirs = ['covers', 'screenshots', 'archives', 'bugs', 'avatars'];
   uploadDirs.forEach(dir => {
     const full = path.join(__dirname, '..', 'public', 'uploads', dir);
     if (fs.existsSync(full)) archive.directory(full, `public/uploads/${dir}`);
@@ -323,17 +364,17 @@ router.get('/admin/backup', requireOwner, (req, res) => {
 
 // ---------------------------------------------------------------- настройки (свой пароль)
 router.get('/admin/settings', (req, res) => {
-  res.render('admin/settings', { title: 'Настройки', saved: !!req.query.saved, error: null });
+  res.render('admin/settings', { title: 'Настройки', saved: !!req.query.saved, error: null, restored: null });
 });
 router.post('/admin/settings/password', (req, res) => {
   const currentPassword = (req.body.current_password || '').trim();
   const newPassword = (req.body.new_password || '').trim();
   const admin = db.prepare('SELECT * FROM admins WHERE id = ?').get(req.session.admin.id);
   if (!bcrypt.compareSync(currentPassword, admin.password_hash)) {
-    return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Текущий пароль неверный.' });
+    return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Текущий пароль неверный.', restored: null });
   }
   if (!newPassword || newPassword.length < 6) {
-    return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Новый пароль — минимум 6 символов.' });
+    return res.render('admin/settings', { title: 'Настройки', saved: false, error: 'Новый пароль — минимум 6 символов.', restored: null });
   }
   db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), admin.id);
   res.redirect('/admin/settings?saved=1');

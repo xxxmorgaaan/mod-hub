@@ -87,13 +87,32 @@
   <section style="margin-top:32px;">
     <h2>Комментарии (<%= comments.length %>)</h2>
     <form method="post" action="/mods/<%= mod.id %>/comments" class="form-panel" style="margin-bottom:16px;">
-      <div class="field"><label>Имя</label><input type="text" name="author_name" maxlength="40" placeholder="Гость"></div>
+      <% if (user) { %>
+        <p class="hint" style="margin-bottom:10px;">Вы пишете как <b><%= user.username %></b>.</p>
+      <% } else { %>
+        <div class="field">
+          <label>Имя</label>
+          <input type="text" name="author_name" maxlength="40" placeholder="Гость">
+          <p class="hint">Можно писать как гость. <a href="/login">Войдите</a>, чтобы комментарии шли под вашим именем и аватаркой.</p>
+        </div>
+      <% } %>
       <div class="field"><label>Комментарий</label><textarea name="body" maxlength="2000" required></textarea></div>
       <button class="btn btn-primary" type="submit">Отправить</button>
     </form>
     <% comments.forEach(c => { %>
       <div class="comment">
-        <span class="author"><%= c.author_name %></span> · <span class="when"><%= c.created_at %></span>
+        <div class="comment-head">
+          <% if (c.author_avatar) { %>
+            <img class="avatar avatar-sm" src="<%= c.author_avatar %>" alt="">
+          <% } else { %>
+            <span class="avatar avatar-sm avatar-letter <%= c.user_id ? '' : 'is-guest' %>"><%= (c.author_name || '?').trim().charAt(0).toUpperCase() %></span>
+          <% } %>
+          <div>
+            <span class="author"><%= c.author_name %></span>
+            <% if (!c.user_id) { %><span class="guest-tag">гость</span><% } %>
+            <span class="when"><%= c.created_at %></span>
+          </div>
+        </div>
         <p><%= c.body %></p>
       </div>
     <% }) %>
