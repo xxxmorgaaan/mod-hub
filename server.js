@@ -43,23 +43,23 @@ app.use((req, res, next) => {
   res.locals.siteAuthorTelegram = process.env.SITE_AUTHOR_TELEGRAM || '@Xxmorgaan';
   res.locals.gameDevTelegram = process.env.GAME_DEV_TELEGRAM || '@alemcolony';
   res.locals.admin = (req.session && req.session.admin) || null;
+  // Логин держим в сессии, а аватарку подтягиваем из базы — так она
+  // обновляется сразу после замены, без перезахода в аккаунт.
   res.locals.user = (req.session && req.session.user) || null;
+  if (res.locals.user) {
+    try {
+      const row = require('./src/db').prepare('SELECT avatar_path FROM users WHERE id = ?').get(res.locals.user.id);
+      res.locals.user = { ...res.locals.user, avatar: row ? row.avatar_path : null };
+    } catch (e) { /* база могла ещё не мигрировать — не повод ронять страницу */ }
+  }
   res.locals.isOwner = !!(req.session && req.session.admin && req.session.admin.role === 'owner');
   // Баг-трекер и конструктор модов — только для владельца: и сам раздел, и
   // ссылки на него в шапке/подвале показываются только ему.
-  res.locals.bugsEnabled = res.locals.isOwner;
-  res.locals.builderEnabled = res.locals.isOwner;
+  res.locals.bugsEnabled = res.locals.isOwner;   // баг-трекер — только владельцу
+  res.locals.builderEnabled = true;              // конструктор модов — всем
   // Рекламный блок РСЯ в подвале — показывается, только если задан id блока.
   res.locals.yandexAdBlockId = (process.env.YANDEX_AD_BLOCK_ID || '').trim();
   next();
-});
-
-// ---------------------------------------------------------------- конструктор модов — только владельцу
-// Стоит ДО express.static, иначе статика отдала бы /builder/ всем подряд,
-// не спрашивая никого. Владелец — тот, кто вошёл в админку с ролью owner.
-app.use('/builder', (req, res, next) => {
-  if (res.locals.isOwner) return next();
-  return res.status(404).render('404', { title: 'Страница не найдена' });
 });
 
 app.use(express.static(path.join(__dirname, 'public'), {

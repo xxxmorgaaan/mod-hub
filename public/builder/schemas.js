@@ -199,7 +199,7 @@ const SCHEMAS = {
       { name: 'apparelId', label: 'Шьёт одежду с id', type: 'text' },
       { name: 'colorPick', label: 'Показать выбор цвета', type: 'checkbox' },
       { name: 'medicinePool', label: 'Берёт лекарства из общего пула', type: 'checkbox' },
-      { name: 'more', label: 'Доп. ингредиенты', type: 'materialList', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
+      { name: 'more', label: 'Доп. ингредиенты', type: 'materialList', resKey: 'type', wide: true, hint: 'Материал + количество — выбрать готовый или завести новый ресурс тут же.' },
     ],
   },
 
@@ -579,7 +579,7 @@ SCHEMAS.furniture = {
     ], hint: 'Стены, полы, двери, мосты, заборы, провода, телеги и шахтный ствол за основу брать нельзя.' },
     { name: 'variant', label: 'Вариант основы', type: 'text', placeholder: 'Single', hint: 'У кровати Single/Double/Hospital/Cradle, у энергосети Lamp/Heater/Cooler, у осадного Ballista/Mortar…' },
     { name: 'texture', label: 'Картинка', type: 'text', placeholder: 'furniture/chest' },
-    { name: 'cost', label: 'Материалы', type: 'materialList', wide: true, hint: 'Пусто — как у основы.' },
+    { name: 'cost', label: 'Материалы', type: 'materialList', resKey: 'resource', wide: true, hint: 'Пусто — как у основы.' },
     { name: 'work', label: 'Время стройки', type: 'number', step: '1', hint: '0 — как у основы.' },
     { name: 'hp', label: 'Прочность', type: 'number', step: '1', hint: '0 — как у основы.' },
     { name: 'light', label: 'Радиус света', type: 'number', step: '1' },

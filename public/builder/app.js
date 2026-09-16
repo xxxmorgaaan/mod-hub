@@ -379,7 +379,10 @@ function buildResourcePicker(controlId, name) {
  * Список «материал × количество» (для «more»/«extra») — чипы вместо ручного
  * JSON. Хранит значение в hidden input (тот же паттерн, что buildUnlocksWidget).
  */
-function buildMaterialListWidget(controlId, name) {
+function buildMaterialListWidget(controlId, name, resKey) {
+  // resKey — как называется поле ресурса в этой конкретной таблице:
+  // у оружия/одежды это "res", у мебели "resource", у рецептов "type".
+  const RES_KEY = resKey || 'res';
   const box = el('div', { class: 'material-list-widget' });
   const hidden = el('input', { type: 'hidden', id: controlId, name });
   let items = [];
@@ -391,7 +394,7 @@ function buildMaterialListWidget(controlId, name) {
     if (!items.length) { chipRow.appendChild(el('span', { class: 'empty-hint-inline' }, 'пока нет доп. материалов')); return; }
     items.forEach((it, i) => {
       const chip = el('span', { class: 'chip' }, [
-        `${it.res} × ${it.count}`,
+        `${it[RES_KEY]} × ${it.count}`,
         el('button', { type: 'button', class: 'chip-x', 'aria-label': 'Удалить' }, '×'),
       ]);
       chip.querySelector('.chip-x').addEventListener('click', () => { items.splice(i, 1); syncHidden(); renderChips(); });
@@ -399,7 +402,13 @@ function buildMaterialListWidget(controlId, name) {
     });
   }
   hidden.__setItems = (arr) => {
-    items = Array.isArray(arr) ? arr.filter(x => x && x.res).map(x => ({ res: x.res, count: Number(x.count) || 1 })) : [];
+    // при импорте чужого мода ключ может быть любым из трёх — приводим к своему
+    items = Array.isArray(arr)
+      ? arr.map(x => {
+          const res = x && (x[RES_KEY] ?? x.res ?? x.resource ?? x.type);
+          return res ? { [RES_KEY]: res, count: Number(x.count) || 1 } : null;
+        }).filter(Boolean)
+      : [];
     syncHidden(); renderChips();
   };
   renderChips();
@@ -412,7 +421,7 @@ function buildMaterialListWidget(controlId, name) {
     const res = pickerSelect.value;
     if (!res || res === '__new') { alert('Выберите материал (или заведите новый ресурс и подтвердите Enter/уходом из поля).'); return; }
     const count = Math.max(1, Number(countInput.value) || 1);
-    items.push({ res, count });
+    items.push({ [RES_KEY]: res, count });
     syncHidden(); renderChips();
     countInput.value = '1';
   });
@@ -469,7 +478,7 @@ function buildFieldControl(field, formId) {
     if (field.hint) wrap.appendChild(el('p', { class: 'field-hint' }, field.hint));
     return wrap;
   } else if (field.type === 'materialList') {
-    wrap.appendChild(buildMaterialListWidget(controlId, field.name));
+    wrap.appendChild(buildMaterialListWidget(controlId, field.name, field.resKey));
     if (field.hint) wrap.appendChild(el('p', { class: 'field-hint' }, field.hint));
     return wrap;
   } else if (field.type === 'number') {
@@ -1237,6 +1246,28 @@ function validateProject() {
     });
   });
 
+  // Событие: игра требует либо effects, либо ровно два choices.
+  state.tables.events.forEach(e => {
+    const hasEffects = Array.isArray(e.effects) && e.effects.length;
+    const hasChoices = Array.isArray(e.choices) && e.choices.length;
+    if (!hasEffects && !hasChoices) {
+      warnings.push(`Событие «${e.title || e.id}»: не заданы ни последствия, ни выбор — ничего не произойдёт.`);
+    }
+    if (hasEffects && hasChoices) {
+      warnings.push(`Событие «${e.title || e.id}»: заданы и последствия, и выбор — нужно что-то одно.`);
+    }
+    if (hasChoices && e.choices.length !== 2) {
+      warnings.push(`Событие «${e.title || e.id}»: вариантов выбора ${e.choices.length}, а игра ждёт ровно 2 — иначе событие будет пропущено.`);
+    }
+  });
+
+  // Мебель без основы — это просто декор; предупреждаем, если задали вариант основы без самой основы.
+  state.tables.furniture.forEach(f => {
+    if (f.variant && !f.base) {
+      warnings.push(`Мебель «${f.name || f.id}»: задан вариант основы, но не выбрана сама основа — вариант будет проигнорирован.`);
+    }
+  });
+
   // Рецепт без результата — станок не будет знать, что выдавать.
   state.tables.recipes.forEach(r => {
     if (!r.outType) warnings.push(`Рецепт «${r.name || r.id}» без поля «Результат: тип» — станок не поймёт, что производить.`);
@@ -1456,6 +1487,15 @@ async function importModZip(file) {
     const [modJson, weaponsJson, apparelJson, resourcesJson, recipesJson, buildingsJson, techsJson, pawnsJson, locJson] =
       await Promise.all(['mod.json', 'weapons.json', 'apparel.json', 'resources.json', 'recipes.json', 'buildings.json', 'techs.json', 'pawns.json', 'loc.json'].map(readJson));
 
+    // Таблицы «Мир и жизнь» — читаются тем же способом, каждая из своего файла.
+    const worldTables = {};
+    for (const [tableKey, [fileName, listKey]] of Object.entries(SIMPLE_TABLE_FILES)) {
+      const parsed = await readJson(fileName);
+      worldTables[tableKey] = Array.isArray(parsed[listKey]) ? parsed[listKey] : [];
+    }
+    const infoJson = await readJson('info.json');
+    worldTables.info = Object.entries(infoJson.entries || {}).map(([key, text]) => ({ key, text }));
+
     const fresh = defaultState();
     const next = {
       info: { ...fresh.info, ...modJson },
@@ -1473,6 +1513,7 @@ async function importModZip(file) {
         adulthoods: Array.isArray(pawnsJson.adulthoods) ? pawnsJson.adulthoods : [],
         rareFullfirst: Array.isArray(pawnsJson.rareFullfirst) ? pawnsJson.rareFullfirst : [],
         loc: Object.entries(locJson.en || {}).map(([ru, en]) => ({ ru, en })),
+        ...worldTables,
       },
       names: {},
       textures: [],

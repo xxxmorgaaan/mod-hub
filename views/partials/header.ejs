@@ -21,7 +21,14 @@
 
       <div class="nav-section">Мой доступ</div>
       <% if (user) { %>
-        <a href="/account"><span class="nav-ico">👤</span><span><%= user.username %><span class="nav-sub">мои моды и сборки</span></span></a>
+        <a href="/account">
+          <% if (user.avatar) { %>
+            <img class="avatar avatar-nav" src="<%= user.avatar %>" alt="">
+          <% } else { %>
+            <span class="nav-ico">👤</span>
+          <% } %>
+          <span><%= user.username %><span class="nav-sub">мои моды и сборки</span></span>
+        </a>
       <% } else { %>
         <a href="/login"><span class="nav-ico">🔓</span><span>Войти<span class="nav-sub">или зарегистрироваться</span></span></a>
       <% } %>

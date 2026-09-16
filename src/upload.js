@@ -1,9 +1,17 @@
 // src/upload.js
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const { nanoid } = require('nanoid');
 
 const UPLOAD_ROOT = path.join(__dirname, '..', 'public', 'uploads');
+
+// Папки загрузок создаём при старте: multer НЕ создаёт их сам и молча
+// роняет загрузку, если папки нет. На Railway том монтируется поверх
+// public/uploads пустым, так что без этого не работали бы ни аватарки,
+// ни обложки — вообще ни одна загрузка на свежем томе.
+const UPLOAD_DIRS = ['covers', 'screenshots', 'archives', 'bugs', 'avatars', 'tmp'];
+UPLOAD_DIRS.forEach(dir => fs.mkdirSync(path.join(UPLOAD_ROOT, dir), { recursive: true }));
 
 function storageFor(subdir) {
   return multer.diskStorage({

@@ -17,6 +17,22 @@
 </div>
 <% } %>
 
+<!-- Нижняя панель — только на телефоне: четыре главных действия всегда
+     под большим пальцем, не надо каждый раз лезть в меню наверху. -->
+<nav class="bottom-nav">
+  <a href="/games/alem-colony"><span class="bn-ico">🗺</span>Моды</a>
+  <a href="/games/alem-colony/bundles"><span class="bn-ico">📦</span>Сборки</a>
+  <a href="/mods/new" class="bn-accent"><span class="bn-ico">⬆</span>Выложить</a>
+  <% if (user) { %>
+    <a href="/account">
+      <% if (user.avatar) { %><img class="avatar avatar-bn" src="<%= user.avatar %>" alt=""><% } else { %><span class="bn-ico">👤</span><% } %>
+      Кабинет
+    </a>
+  <% } else { %>
+    <a href="/login"><span class="bn-ico">🔓</span>Войти</a>
+  <% } %>
+</nav>
+
 <footer class="site-footer">
   <div class="container foot-row">
     <div>
